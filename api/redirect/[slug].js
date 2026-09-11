@@ -8,12 +8,17 @@ export default async function handler(request, response) {
   }
 
   const slug = String(request.query.slug || "").toLowerCase();
-  const host = (
+  const requestHost = (
     request.headers["x-forwarded-host"] ||
     request.headers.host ||
     "go.consolaktif.com.tr"
   )
     .split(",")[0]
+    .trim()
+    .toLowerCase();
+  const configuredHost = (
+    process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr"
+  )
     .trim()
     .toLowerCase();
 
@@ -22,9 +27,19 @@ export default async function handler(request, response) {
 
   try {
     const { db } = await getFirebaseAdmin();
-    const linkRef = db.collection("links").doc(`${host}__${slug}`);
-    const linkSnapshot = await linkRef.get();
-    if (!linkSnapshot.exists)
+    const candidateHosts = [...new Set([configuredHost, requestHost])];
+    let linkRef;
+    let linkSnapshot;
+    for (const host of candidateHosts) {
+      const candidateRef = db.collection("links").doc(`${host}__${slug}`);
+      const candidateSnapshot = await candidateRef.get();
+      if (candidateSnapshot.exists) {
+        linkRef = candidateRef;
+        linkSnapshot = candidateSnapshot;
+        break;
+      }
+    }
+    if (!linkSnapshot?.exists)
       return response.status(404).send("Link not found");
 
     const link = linkSnapshot.data();
