@@ -523,6 +523,18 @@ button {
   color: #97a1b0;
   padding: 30px 10px;
 }
+.traffic-empty {
+  min-height: 170px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #9aa5b5;
+  font-size: 11px;
+  line-height: 1.5;
+  border: 1px dashed #dfe5ed;
+  border-radius: 8px;
+  padding: 20px;
+}
 .x-axis {
   position: absolute;
   left: 0;

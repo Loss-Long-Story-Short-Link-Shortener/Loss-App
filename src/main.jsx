@@ -41,11 +41,6 @@ import {
 } from "./firebase";
 import "./styles.css";
 
-const chartPoints = [
-  36, 42, 38, 55, 48, 62, 57, 72, 68, 78, 73, 89, 82, 96, 88, 104, 98, 112, 108,
-  124, 116, 132, 126, 145,
-];
-
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -176,7 +171,7 @@ function App() {
           <div className="workspace-avatar">A</div>
           <div>
             <span className="eyebrow">Workspace</span>
-            <strong>Acme Studio</strong>
+            <strong>My workspace</strong>
           </div>
           <ChevronDown size={15} />
         </div>
@@ -195,7 +190,9 @@ function App() {
             >
               <Icon size={18} />
               <span>{label}</span>
-              {label === "Links" && <b className="nav-count">24</b>}
+              {label === "Links" && links.length > 0 && (
+                <b className="nav-count">{links.length}</b>
+              )}
             </button>
           ))}
           <p className="nav-label nav-label-spaced">Manage</p>
@@ -218,13 +215,13 @@ function App() {
           <div className="usage-card">
             <div className="usage-top">
               <span>Monthly clicks</span>
-              <span>72%</span>
+              <span>{links.length ? "Live" : "—"}</span>
             </div>
             <div className="progress">
-              <span />
+              <span style={{ width: links.length ? "4%" : "0%" }} />
             </div>
             <p>
-              72,340 <em>of 100,000</em>
+              {totalClicks.toLocaleString()} <em>tracked clicks</em>
             </p>
             <button onClick={() => setActivePage("Billing")}>
               Manage plan <ArrowUpRight size={13} />
@@ -239,10 +236,16 @@ function App() {
             <span>Help center</span>
           </button>
           <div className="profile">
-            <div className="profile-avatar">MK</div>
+            <div className="profile-avatar">
+              {(user.displayName || user.email || "U")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
             <div>
-              <strong>Marcus Kim</strong>
-              <span>Admin</span>
+              <strong>
+                {user.displayName || user.email || "Signed-in user"}
+              </strong>
+              <span>{user.email || "Firebase account"}</span>
             </div>
             <MoreHorizontal size={17} />
           </div>
@@ -367,10 +370,14 @@ function App() {
               </div>
               <div className="chart">
                 <div className="y-axis">
-                  <span>160k</span>
-                  <span>120k</span>
-                  <span>80k</span>
-                  <span>40k</span>
+                  <span>
+                    {totalClicks
+                      ? `${Math.max(totalClicks, 1).toLocaleString()}`
+                      : "—"}
+                  </span>
+                  <span>—</span>
+                  <span>—</span>
+                  <span>—</span>
                   <span>0</span>
                 </div>
                 <div className="chart-body">
@@ -381,59 +388,19 @@ function App() {
                     <i />
                     <i />
                   </div>
-                  {links.length ? (
-                    <svg
-                      viewBox="0 0 720 190"
-                      preserveAspectRatio="none"
-                      role="img"
-                      aria-label="Click performance line chart"
-                    >
-                      <defs>
-                        <linearGradient
-                          id="fillBlue"
-                          x1="0"
-                          x2="0"
-                          y1="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#2168f3"
-                            stopOpacity=".2"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#2168f3"
-                            stopOpacity="0"
-                          />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20 L720 190 L0 190 Z"
-                        fill="url(#fillBlue)"
-                      />
-                      <path
-                        d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20"
-                        fill="none"
-                        stroke="#2168f3"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  ) : (
-                    <div className="chart-empty">
-                      Create your first short link to start collecting click
-                      data.
-                    </div>
-                  )}
+                  <div className="chart-empty">
+                    {totalClicks
+                      ? "Time-series analytics will appear after click history aggregation is connected."
+                      : "Create your first short link to start collecting click data."}
+                  </div>
                   <div className="x-axis">
-                    <span>Aug 12</span>
-                    <span>Aug 17</span>
-                    <span>Aug 22</span>
-                    <span>Aug 27</span>
-                    <span>Sep 01</span>
-                    <span>Sep 06</span>
-                    <span>Sep 11</span>
+                    <span>30 days ago</span>
+                    <span>25 days ago</span>
+                    <span>20 days ago</span>
+                    <span>15 days ago</span>
+                    <span>10 days ago</span>
+                    <span>5 days ago</span>
+                    <span>Today</span>
                   </div>
                 </div>
               </div>
@@ -449,18 +416,16 @@ function App() {
                 </button>
               </div>
               <div className="donut-wrap">
-                <div className="donut">
-                  <div>
-                    <strong>72.3k</strong>
-                    <span>Clicks</span>
+                {totalClicks ? (
+                  <div className="traffic-empty">
+                    Traffic source attribution will appear after click events
+                    include referrer data.
                   </div>
-                </div>
-                <div className="legend">
-                  <Legend color="blue" label="Direct / none" value="42.1%" />
-                  <Legend color="green" label="Instagram" value="24.8%" />
-                  <Legend color="yellow" label="Google" value="18.4%" />
-                  <Legend color="coral" label="Other" value="14.7%" />
-                </div>
+                ) : (
+                  <div className="traffic-empty">
+                    No traffic data yet. Create and share a short link to begin.
+                  </div>
+                )}
               </div>
               <button
                 className="text-button"
