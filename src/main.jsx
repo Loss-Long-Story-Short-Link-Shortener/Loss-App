@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Globe2,
   Key,
+  Laptop,
   Layers,
   LayoutDashboard,
   Link2,
