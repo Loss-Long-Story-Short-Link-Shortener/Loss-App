@@ -21,7 +21,7 @@ export default async function handler(request, response) {
     return response.status(404).send("Link not found");
 
   try {
-    const { db } = getFirebaseAdmin();
+    const { db } = await getFirebaseAdmin();
     const linkRef = db.collection("links").doc(`${host}__${slug}`);
     const linkSnapshot = await linkRef.get();
     if (!linkSnapshot.exists)
@@ -49,3 +49,5 @@ export default async function handler(request, response) {
     return response.status(500).send("Unable to redirect link");
   }
 }
+
+export const config = { runtime: "nodejs20.x" };

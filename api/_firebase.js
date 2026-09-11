@@ -1,7 +1,3 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-
 const requiredEnv = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL"];
 
 function getPrivateKey() {
@@ -19,7 +15,7 @@ function getPrivateKey() {
     .trim();
 }
 
-export function getFirebaseAdmin() {
+export async function getFirebaseAdmin() {
   const missing = requiredEnv.filter((name) => !process.env[name]?.trim());
   if (missing.length) {
     throw new Error(
@@ -36,6 +32,13 @@ export function getFirebaseAdmin() {
       "FIREBASE_PRIVATE_KEY is not a valid service-account private key",
     );
   }
+
+  const [{ cert, getApps, initializeApp }, { getAuth }, { getFirestore }] =
+    await Promise.all([
+      import("firebase-admin/app"),
+      import("firebase-admin/auth"),
+      import("firebase-admin/firestore"),
+    ]);
 
   const app =
     getApps()[0] ||
@@ -66,7 +69,7 @@ export async function requireUser(request) {
   }
 
   try {
-    const { auth } = getFirebaseAdmin();
+    const { auth } = await getFirebaseAdmin();
     return await auth.verifyIdToken(token);
   } catch (error) {
     error.statusCode =

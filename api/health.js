@@ -6,10 +6,12 @@ export default async function handler(request, response) {
   }
 
   try {
-    const { db } = getFirebaseAdmin();
+    const { db } = await getFirebaseAdmin();
     await db.collection("_health").limit(1).get();
     return sendJson(response, 200, { ok: true, firebase: "connected" });
   } catch (error) {
     return handleApiError(response, error);
   }
 }
+
+export const config = { runtime: "nodejs20.x" };

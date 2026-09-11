@@ -30,7 +30,7 @@ export default async function handler(request, response) {
 
   try {
     const user = await requireUser(request);
-    const { db } = getFirebaseAdmin();
+    const { db } = await getFirebaseAdmin();
     const host = (process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr")
       .trim()
       .toLowerCase();
@@ -105,3 +105,5 @@ export default async function handler(request, response) {
     return handleApiError(response, error);
   }
 }
+
+export const config = { runtime: "nodejs20.x" };
