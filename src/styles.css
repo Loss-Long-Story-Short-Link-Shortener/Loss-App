@@ -594,6 +594,21 @@ button {
   color: #344157;
   font-size: 12px;
 }
+.link-list-row a {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #2168f3;
+  text-decoration: none;
+}
+.link-list-row a:hover {
+  text-decoration: underline;
+}
+.link-list-row a strong {
+  color: inherit;
+}
 .link-list-row span,
 .domain-status span:not(.status-dot) {
   display: block;
@@ -602,6 +617,72 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.created-link-result {
+  text-align: center;
+  padding: 15px 0 5px;
+}
+.created-link-check {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dff6ef;
+  color: #1ea87a;
+  font-size: 22px;
+  font-weight: 700;
+}
+.created-link-result h3 {
+  margin: 0;
+  color: #25334b;
+  font: 700 18px "Space Grotesk";
+}
+.created-link-result p {
+  color: #8894a5;
+  font-size: 12px;
+  margin: 8px 0 15px;
+}
+.created-link-url {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #2168f3;
+  background: #eef4ff;
+  border: 1px solid #d7e4ff;
+  border-radius: 8px;
+  padding: 13px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  word-break: break-all;
+}
+.created-link-url:hover {
+  background: #e5efff;
+}
+.created-link-actions {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 18px;
+}
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #dce3ed;
+  border-radius: 8px;
+  background: #fff;
+  color: #526077;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+.secondary-button:hover {
+  background: #f6f8fb;
 }
 .link-list-row > b {
   color: #26344b;

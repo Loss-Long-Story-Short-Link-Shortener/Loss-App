@@ -75,6 +75,7 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [createdLink, setCreatedLink] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const totalClicks = links.reduce(
     (total, link) => total + Number(link.clickCount || 0),
@@ -139,10 +140,10 @@ function App() {
       });
       const data = await readApiResponse(result);
       setLinks((current) => [data.link, ...current]);
+      setCreatedLink(data.link);
       await navigator.clipboard?.writeText(data.link.shortUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
-      setShowModal(false);
       setUrl("");
     } catch (error) {
       setLinkError(error.message);
@@ -555,7 +556,13 @@ function App() {
                               </span>
                               <div>
                                 <strong>{displayLink.title}</strong>
-                                <span>{displayLink.slug}</span>
+                                <a
+                                  href={getShortUrl(link)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {getShortUrl(link)}
+                                </a>
                               </div>
                             </div>
                           </td>
@@ -626,49 +633,94 @@ function App() {
               </div>
               <button
                 className="close-button"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setCreatedLink(null);
+                  setLinkError("");
+                }}
               >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={createShortLink}>
-              <label>
-                Destination URL
-                <input
-                  autoFocus
-                  name="destination"
-                  required
-                  type="url"
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  placeholder="https://example.com/your-long-url"
-                />
-              </label>
-              <div className="modal-options">
+            {createdLink ? (
+              <div className="created-link-result">
+                <div className="created-link-check">✓</div>
+                <h3>Your short link is ready</h3>
+                <p>
+                  It was copied to your clipboard. You can also open it
+                  directly:
+                </p>
+                <a
+                  className="created-link-url"
+                  href={createdLink.shortUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {createdLink.shortUrl}
+                  <ExternalLink size={16} />
+                </a>
+                <div className="created-link-actions">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() =>
+                      navigator.clipboard?.writeText(createdLink.shortUrl)
+                    }
+                  >
+                    <Copy size={15} /> Copy link
+                  </button>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => {
+                      setCreatedLink(null);
+                      setLinkError("");
+                    }}
+                  >
+                    <Plus size={15} /> Create another
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={createShortLink}>
                 <label>
-                  Short domain
-                  <select disabled>
-                    <option>go.consolaktif.com.tr</option>
-                  </select>
-                </label>
-                <label>
-                  Custom slug
+                  Destination URL
                   <input
-                    name="slug"
-                    pattern="[A-Za-z0-9_-]{3,48}"
-                    placeholder="optional"
+                    autoFocus
+                    name="destination"
+                    required
+                    type="url"
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder="https://example.com/your-long-url"
                   />
                 </label>
-              </div>
-              {linkError && <p className="auth-error">{linkError}</p>}
-              <button
-                className="primary-button modal-submit"
-                disabled={linkBusy}
-              >
-                <Link2 size={17} />{" "}
-                {linkBusy ? "Creating..." : "Create short link"}
-              </button>
-            </form>
+                <div className="modal-options">
+                  <label>
+                    Short domain
+                    <select disabled>
+                      <option>go.consolaktif.com.tr</option>
+                    </select>
+                  </label>
+                  <label>
+                    Custom slug
+                    <input
+                      name="slug"
+                      pattern="[A-Za-z0-9_-]{3,48}"
+                      placeholder="optional"
+                    />
+                  </label>
+                </div>
+                {linkError && <p className="auth-error">{linkError}</p>}
+                <button
+                  className="primary-button modal-submit"
+                  disabled={linkBusy}
+                >
+                  <Link2 size={17} />{" "}
+                  {linkBusy ? "Creating..." : "Create short link"}
+                </button>
+              </form>
+            )}
             <div className="modal-note">
               <ShieldCheck size={15} /> Your link is protected by
               enterprise-grade analytics.
@@ -878,6 +930,10 @@ function presentLink(link) {
   };
 }
 
+function getShortUrl(link) {
+  return link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`;
+}
+
 function pageDescription(page) {
   const descriptions = {
     Links: "Create, inspect, and manage the links in your workspace.",
@@ -919,7 +975,10 @@ function WorkspacePage({ page, links, totalClicks, onCreate, onNavigate }) {
                   <Link2 size={16} />
                 </div>
                 <div>
-                  <strong>{link.slug}</strong>
+                  <a href={getShortUrl(link)} target="_blank" rel="noreferrer">
+                    <strong>{getShortUrl(link)}</strong>
+                    <ExternalLink size={13} />
+                  </a>
                   <span>{link.destination}</span>
                 </div>
                 <b>{link.clickCount || 0} clicks</b>
