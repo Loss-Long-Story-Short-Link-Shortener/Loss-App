@@ -507,6 +507,22 @@ button {
   height: calc(100% - 24px);
   overflow: visible;
 }
+.chart-empty {
+  position: absolute;
+  inset: 25px 0 35px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #9aa5b5;
+  font-size: 11px;
+  border: 1px dashed #dfe5ed;
+  border-radius: 8px;
+}
+.table-empty {
+  text-align: center;
+  color: #97a1b0;
+  padding: 30px 10px;
+}
 .x-axis {
   position: absolute;
   left: 0;

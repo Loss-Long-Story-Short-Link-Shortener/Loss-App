@@ -41,8 +41,6 @@ import {
 } from "./firebase";
 import "./styles.css";
 
-const links = [];
-
 const chartPoints = [
   36, 42, 38, 55, 48, 62, 57, 72, 68, 78, 73, 89, 82, 96, 88, 104, 98, 112, 108,
   124, 116, 132, 126, 145,
@@ -54,10 +52,17 @@ function App() {
   const [theme, setTheme] = useState(
     () => window.localStorage.getItem("lss-theme") || "light",
   );
+  const [links, setLinks] = useState([]);
   const [activePage, setActivePage] = useState("Overview");
   const [showModal, setShowModal] = useState(false);
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+  const totalClicks = links.reduce(
+    (total, link) => total + Number(link.clickCount || 0),
+    0,
+  );
 
   const copyLink = () => {
     setCopied(true);
@@ -79,6 +84,61 @@ function App() {
       setAuthLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (!user || !auth) return;
+    const loadLinks = async () => {
+      try {
+        const token = await user.getIdToken();
+        const apiUrl = import.meta.env.VITE_SHORTENER_API_URL || "";
+        const result = await fetch(`${apiUrl}/api/links`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!result.ok) return;
+        const data = await result.json();
+        setLinks(data.links || []);
+      } catch (error) {
+        console.error("Unable to load links", error);
+      }
+    };
+    loadLinks();
+  }, [user]);
+
+  const createShortLink = async (event) => {
+    event.preventDefault();
+    setLinkError("");
+    setLinkBusy(true);
+    try {
+      const token = await user.getIdToken();
+      const form = new FormData(event.currentTarget);
+      const result = await fetch(
+        `${import.meta.env.VITE_SHORTENER_API_URL || ""}/api/links`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            destination: form.get("destination"),
+            slug: form.get("slug"),
+          }),
+        },
+      );
+      const data = await result.json();
+      if (!result.ok) throw new Error(data.error || "Unable to create link");
+      setLinks((current) => [data.link, ...current]);
+      await navigator.clipboard?.writeText(data.link.shortUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+      setShowModal(false);
+      setUrl("");
+    } catch (error) {
+      setLinkError(error.message);
+    } finally {
+      setLinkBusy(false);
+    }
+  };
 
   if (!firebaseConfigured) {
     return <AuthScreen configured={false} />;
@@ -246,35 +306,35 @@ function App() {
           <section className="stats-grid">
             <StatCard
               label="Total clicks"
-              value="72,340"
-              change="18.6%"
-              trend="up"
+              value={totalClicks.toLocaleString()}
+              change="Live"
+              trend="neutral"
               icon={MousePointerClick}
-              note="vs. previous 30 days"
+              note="from your links"
             />
             <StatCard
               label="Active links"
-              value="24"
-              change="4 new"
-              trend="up"
+              value={links.filter((link) => link.status === "active").length}
+              change="Live"
+              trend="neutral"
               icon={Link2}
-              note="this month"
+              note="in your workspace"
             />
             <StatCard
               label="Click-through rate"
-              value="6.42%"
-              change="0.8%"
-              trend="up"
+              value="—"
+              change="Soon"
+              trend="neutral"
               icon={BarChart3}
-              note="vs. previous 30 days"
+              note="needs traffic data"
             />
             <StatCard
               label="Top location"
-              value="United States"
-              change="42.1%"
+              value="—"
+              change="Soon"
               trend="neutral"
               icon={Globe2}
-              note="of total clicks"
+              note="needs traffic data"
             />
           </section>
 
@@ -292,11 +352,17 @@ function App() {
               </div>
               <div className="chart-meta">
                 <div>
-                  <strong>72,340</strong>
+                  <strong>{totalClicks.toLocaleString()}</strong>
                   <span>Total clicks</span>
                 </div>
                 <div className="chart-change">
-                  <ArrowUpRight size={15} /> 18.6%
+                  {links.length ? (
+                    <>
+                      <ArrowUpRight size={15} /> Live
+                    </>
+                  ) : (
+                    "No click data yet"
+                  )}
                 </div>
               </div>
               <div className="chart">
@@ -315,38 +381,51 @@ function App() {
                     <i />
                     <i />
                   </div>
-                  <svg
-                    viewBox="0 0 720 190"
-                    preserveAspectRatio="none"
-                    role="img"
-                    aria-label="Click performance line chart"
-                  >
-                    <defs>
-                      <linearGradient id="fillBlue" x1="0" x2="0" y1="0" y2="1">
-                        <stop
-                          offset="0%"
-                          stopColor="#2168f3"
-                          stopOpacity=".2"
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="#2168f3"
-                          stopOpacity="0"
-                        />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20 L720 190 L0 190 Z"
-                      fill="url(#fillBlue)"
-                    />
-                    <path
-                      d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20"
-                      fill="none"
-                      stroke="#2168f3"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  {links.length ? (
+                    <svg
+                      viewBox="0 0 720 190"
+                      preserveAspectRatio="none"
+                      role="img"
+                      aria-label="Click performance line chart"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="fillBlue"
+                          x1="0"
+                          x2="0"
+                          y1="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#2168f3"
+                            stopOpacity=".2"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#2168f3"
+                            stopOpacity="0"
+                          />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20 L720 190 L0 190 Z"
+                        fill="url(#fillBlue)"
+                      />
+                      <path
+                        d="M0 160 C30 150 34 150 62 148 S94 145 123 136 S154 145 185 125 S216 118 247 120 S280 102 308 108 S338 96 370 95 S404 80 432 86 S462 71 493 76 S530 56 555 61 S586 43 617 49 S650 27 677 31 S700 19 720 20"
+                        fill="none"
+                        stroke="#2168f3"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ) : (
+                    <div className="chart-empty">
+                      Create your first short link to start collecting click
+                      data.
+                    </div>
+                  )}
                   <div className="x-axis">
                     <span>Aug 12</span>
                     <span>Aug 17</span>
@@ -427,50 +506,65 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {links.map((link) => (
-                    <tr key={link.slug}>
-                      <td>
-                        <div className="link-cell">
-                          <span className={`link-icon ${link.color}`}>
-                            <Link2 size={15} />
-                          </span>
-                          <div>
-                            <strong>{link.title}</strong>
-                            <span>{link.slug}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="number-cell">{link.clicks}</td>
-                      <td>
-                        <span
-                          className={
-                            link.change.startsWith("+")
-                              ? "positive"
-                              : "negative"
-                          }
-                        >
-                          {link.change.startsWith("+") ? (
-                            <ArrowUpRight size={14} />
-                          ) : (
-                            <ArrowDownRight size={14} />
-                          )}
-                          {link.change}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status ${link.status.toLowerCase()}`}>
-                          <i />
-                          {link.status}
-                        </span>
-                      </td>
-                      <td className="date-cell">{link.date}</td>
-                      <td>
-                        <button className="row-menu">
-                          <MoreHorizontal size={17} />
-                        </button>
+                  {links.length ? (
+                    links.map((link) => {
+                      const displayLink = presentLink(link);
+                      return (
+                        <tr key={link.id || link.slug}>
+                          <td>
+                            <div className="link-cell">
+                              <span
+                                className={`link-icon ${displayLink.color}`}
+                              >
+                                <Link2 size={15} />
+                              </span>
+                              <div>
+                                <strong>{displayLink.title}</strong>
+                                <span>{displayLink.slug}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="number-cell">{displayLink.clicks}</td>
+                          <td>
+                            <span
+                              className={
+                                displayLink.change.startsWith("+")
+                                  ? "positive"
+                                  : "negative"
+                              }
+                            >
+                              {displayLink.change.startsWith("+") ? (
+                                <ArrowUpRight size={14} />
+                              ) : (
+                                <ArrowDownRight size={14} />
+                              )}
+                              {displayLink.change}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`status ${displayLink.status.toLowerCase()}`}
+                            >
+                              <i />
+                              {displayLink.status}
+                            </span>
+                          </td>
+                          <td className="date-cell">{displayLink.date}</td>
+                          <td>
+                            <button className="row-menu">
+                              <MoreHorizontal size={17} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="table-empty">
+                        No links yet. Create your first short link above.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -502,37 +596,44 @@ function App() {
                 <X size={18} />
               </button>
             </div>
-            <label>
-              Destination URL
-              <input
-                autoFocus
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                placeholder="https://example.com/your-long-url"
-              />
-            </label>
-            <div className="modal-options">
+            <form onSubmit={createShortLink}>
               <label>
-                Short domain
-                <select>
-                  <option>go.lss.to</option>
-                  <option>lss.link</option>
-                </select>
+                Destination URL
+                <input
+                  autoFocus
+                  name="destination"
+                  required
+                  type="url"
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  placeholder="https://example.com/your-long-url"
+                />
               </label>
-              <label>
-                Custom slug
-                <input placeholder="optional" />
-              </label>
-            </div>
-            <button
-              className="primary-button modal-submit"
-              onClick={() => {
-                setShowModal(false);
-                setUrl("");
-              }}
-            >
-              <Link2 size={17} /> Create short link
-            </button>
+              <div className="modal-options">
+                <label>
+                  Short domain
+                  <select disabled>
+                    <option>go.consolaktif.com.tr</option>
+                  </select>
+                </label>
+                <label>
+                  Custom slug
+                  <input
+                    name="slug"
+                    pattern="[A-Za-z0-9_-]{3,48}"
+                    placeholder="optional"
+                  />
+                </label>
+              </div>
+              {linkError && <p className="auth-error">{linkError}</p>}
+              <button
+                className="primary-button modal-submit"
+                disabled={linkBusy}
+              >
+                <Link2 size={17} />{" "}
+                {linkBusy ? "Creating..." : "Create short link"}
+              </button>
+            </form>
             <div className="modal-note">
               <ShieldCheck size={15} /> Your link is protected by
               enterprise-grade analytics.
@@ -717,6 +818,29 @@ function AuthScreen({ configured }) {
       </section>
     </main>
   );
+}
+
+function presentLink(link) {
+  let title = link.title;
+  try {
+    title = title || new URL(link.destination).hostname;
+  } catch {
+    title = title || "Untitled link";
+  }
+
+  const createdAt = link.createdAt?.seconds
+    ? new Date(link.createdAt.seconds * 1000).toLocaleDateString()
+    : "Just now";
+
+  return {
+    title,
+    slug: link.slug,
+    clicks: String(link.clickCount ?? 0),
+    change: "—",
+    status: link.status === "active" ? "Active" : "Paused",
+    date: createdAt,
+    color: "blue",
+  };
 }
 
 function StatCard({ label, value, change, trend, icon: Icon, note }) {
