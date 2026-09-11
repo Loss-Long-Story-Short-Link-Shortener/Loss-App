@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createUserWithEmailAndPassword,
@@ -16,15 +16,12 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
-  Clock,
   Copy,
   CreditCard,
   Download,
   ExternalLink,
   Globe2,
   Key,
-  Laptop,
-  Layers,
   LayoutDashboard,
   Link2,
   ListFilter,
@@ -36,9 +33,7 @@ import {
   QrCode,
   Search,
   Settings2,
-  ShieldAlert,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   Tag,
   Trash2,
@@ -59,96 +54,78 @@ const apiBaseUrl = (import.meta.env.VITE_SHORTENER_API_URL || "")
   .trim()
   .replace(/\/$/, "");
 
-// Plan Tanımları ve Limitleri
-const PLANS = {
+async function readApiResponse(response) {
+  const rawBody = await response.text();
+  let data;
+  try {
+    data = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    throw new Error(
+      `API hatası (${response.status}): ${rawBody.slice(0, 160) || "Yanıt boş"}`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(data.error || `API hatası (${response.status})`);
+  }
+  return data;
+}
+
+// Plan Limitleri & Fiyatlandırma
+const TIERS = {
   free: {
-    name: "Starter",
-    priceMonth: 0,
-    priceYear: 0,
-    maxLinks: 25,
-    maxClicks: 1000,
-    customDomains: 0,
+    name: "Başlangıç (Free)",
+    priceMonthly: 0,
+    priceAnnual: 0,
+    maxLinks: 50,
+    maxClicks: 2500,
+    domains: 0,
     features: [
-      "25 Aktif Link",
-      "Temel İstatistikler",
-      "Standart QR Kod",
-      "Topluluk Desteği",
+      "50 Adet Kısa Link",
+      "2,500 Aylık Tıklama",
+      "Standart QR Kodlar",
+      "30 Günlük Analitik",
     ],
-    lockedFeatures: [
+    disabled: [
       "Özel Alan Adı (Custom Domain)",
-      "Şifre Korumalı Linkler",
-      "UTM Parametreleri",
-      "API Erişimi",
+      "Şifreli Linkler",
+      "UTM Builder",
+      "REST API",
     ],
   },
   pro: {
     name: "Growth Pro",
-    badge: "En Popüler",
-    priceMonth: 19,
-    priceYear: 180,
-    maxLinks: 2500,
-    maxClicks: 50000,
-    customDomains: 3,
+    priceMonthly: 19,
+    priceAnnual: 180,
+    maxLinks: 1500,
+    maxClicks: 100000,
+    domains: 3,
     features: [
-      "2,500 Aktif Link",
-      "Gelişmiş Coğrafi & Cihaz Analitiği",
-      "3 Özel Domain Ekleme",
-      "Şifreli & Süreli Linkler",
-      "Dinamik QR Kod İndirme",
-      "Öncelikli Destek",
+      "1,500 Adet Kısa Link",
+      "100,000 Aylık Tıklama",
+      "3 Özel Alan Adı (go.sirket.com)",
+      "Şifre & Tarih Korumalı Linkler",
+      "UTM Kampanya Builder",
+      "Vektörel QR İndirme",
     ],
-    lockedFeatures: ["API & Webhook Erişimi", "SSO & Çoklu Ekip"],
+    disabled: ["Özel SLA Desteği", "Sınırsız API"],
   },
   enterprise: {
     name: "Enterprise",
-    priceMonth: 59,
-    priceYear: 590,
-    maxLinks: 100000,
-    maxClicks: 1000000,
-    customDomains: 20,
+    priceMonthly: 59,
+    priceAnnual: 580,
+    maxLinks: 50000,
+    maxClicks: 2500000,
+    domains: 25,
     features: [
-      "Sınırsız Link & Tıklama",
-      "20 Özel Domain",
+      "Sınırsız Bağlantı & Tıklama",
+      "25 Özel Alan Adı",
       "REST API & Webhooks",
-      "Özel Ekip Rolleri",
-      "99.9% SLA & 7/24 Telefon Desteği",
-      "Özel SSL Sertifikaları",
+      "99.9% Kesintisiz SLA Garantisi",
+      "Öncelikli 7/24 Mühendis Desteği",
     ],
-    lockedFeatures: [],
+    disabled: [],
   },
 };
-
-const INITIAL_DEMO_LINKS = [
-  {
-    id: "lss-1",
-    title: "Yaz Kampanyası Landing Page",
-    destination:
-      "https://consolaktif.com.tr/kampanyalar/yaz-2026?utm_source=instagram",
-    slug: "yaz26",
-    shortUrl: "https://go.consolaktif.com.tr/yaz26",
-    clickCount: 1420,
-    status: "active",
-    createdAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
-    tags: ["Pazarlama", "Instagram"],
-    password: "",
-    expiresAt: "2026-10-31",
-    devices: { mobile: 68, desktop: 28, tablet: 4 },
-  },
-  {
-    id: "lss-2",
-    title: "Şirket Tanıtım Sunumu 2026 PDF",
-    destination: "https://drive.google.com/file/d/181283hjasd8912/view",
-    slug: "sunum",
-    shortUrl: "https://go.consolaktif.com.tr/sunum",
-    clickCount: 384,
-    status: "active",
-    createdAt: new Date(Date.now() - 3600000 * 24 * 7).toISOString(),
-    tags: ["Satış", "Pitch"],
-    password: "••••••••",
-    expiresAt: "",
-    devices: { mobile: 22, desktop: 74, tablet: 4 },
-  },
-];
 
 function App() {
   const [user, setUser] = useState(null);
@@ -156,45 +133,48 @@ function App() {
   const [theme, setTheme] = useState(
     () => window.localStorage.getItem("lss-theme") || "light",
   );
-  const [links, setLinks] = useState(INITIAL_DEMO_LINKS);
+  const [links, setLinks] = useState([]);
   const [activePage, setActivePage] = useState("Overview");
-
-  // Modallar
   const [showModal, setShowModal] = useState(false);
-  const [modalTab, setModalTab] = useState("general"); // general | utm | security
-  const [showPricingModal, setShowPricingModal] = useState(false);
-  const [activeQrLink, setActiveQrLink] = useState(null);
-  const [toastMessage, setToastMessage] = useState("");
+  const [activeTab, setActiveTab] = useState("general"); // general | utm | security
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentTier, setCurrentTier] = useState("free");
+  const [billingPeriod, setBillingPeriod] = useState("monthly");
 
-  // Abonelik Durumu
-  const [subscription, setSubscription] = useState("free"); // free | pro | enterprise
-  const [billingCycle, setBillingCycle] = useState("monthly"); // monthly | annual
+  // Form State
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [customSlug, setCustomSlug] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkTag, setLinkTag] = useState("");
+  const [utmSource, setUtmSource] = useState("");
+  const [utmMedium, setUtmMedium] = useState("");
+  const [utmCampaign, setUtmCampaign] = useState("");
+  const [password, setPassword] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
-  // Form Değerleri
-  const [linkForm, setLinkForm] = useState({
-    destination: "",
-    slug: "",
-    title: "",
-    tag: "",
-    utmSource: "",
-    utmMedium: "",
-    utmCampaign: "",
-    password: "",
-    expiresAt: "",
-    iosRedirect: "",
-    androidRedirect: "",
-  });
+  const [copied, setCopied] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
   const [createdLink, setCreatedLink] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  // Arama & Filtreleme
+  const [qrModalLink, setQrModalLink] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), 2200);
+  const totalClicks = useMemo(() => {
+    return links.reduce(
+      (total, link) => total + Number(link.clickCount || 0),
+      0,
+    );
+  }, [links]);
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
   };
 
   useEffect(() => {
@@ -213,144 +193,133 @@ function App() {
     });
   }, []);
 
-  const totalClicks = useMemo(() => {
-    return links.reduce((sum, l) => sum + Number(l.clickCount || 0), 0);
-  }, [links]);
+  // Kullanıcının gerçek linklerini backend'den çeken ana hook
+  useEffect(() => {
+    if (!user || !auth) return;
+    const loadLinks = async () => {
+      try {
+        const token = await user.getIdToken();
+        const result = await fetch(`${apiBaseUrl}/api/links`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await readApiResponse(result);
+        setLinks(data.links || []);
+      } catch (error) {
+        console.error("Linkler yüklenemedi:", error);
+      }
+    };
+    loadLinks();
+  }, [user]);
 
-  const filteredLinks = useMemo(() => {
-    return links.filter(
-      (l) =>
-        l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.destination.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  }, [links, searchQuery]);
-
-  // Yeni Link Oluşturma
-  const handleCreateLink = async (e) => {
-    e.preventDefault();
+  // Yeni Link Oluşturma (Backend POST)
+  const createShortLink = async (event) => {
+    event.preventDefault();
     setLinkError("");
 
-    // Free plan limiti kontrolü
-    if (subscription === "free" && links.length >= PLANS.free.maxLinks) {
+    // Plan Kontrolü (Free plan kotası)
+    if (currentTier === "free" && links.length >= TIERS.free.maxLinks) {
       setLinkError(
-        "Ücretsiz link sınırına ulaştınız. Lütfen paketinizi yükseltin.",
+        "Ücretsiz link sınırınıza ulaştınız. Lütfen paketinizi yükseltin.",
       );
-      setShowPricingModal(true);
+      setShowUpgradeModal(true);
       return;
     }
 
-    // Free planda parola kontrolü
-    if (subscription === "free" && (linkForm.password || linkForm.expiresAt)) {
-      setLinkError("Şifreli ve süreli linkler Pro pakete özeldir.");
-      setShowPricingModal(true);
+    if (currentTier === "free" && (password || expiresAt)) {
+      setLinkError(
+        "Şifre ve son kullanma tarihi sadece Pro ve Enterprise planlarda geçerlidir.",
+      );
+      setShowUpgradeModal(true);
       return;
     }
 
     setLinkBusy(true);
 
     try {
-      let finalUrl = linkForm.destination.trim();
-      if (!/^https?:\/\//i.test(finalUrl)) {
-        finalUrl = `https://${finalUrl}`;
+      let finalDestination = destinationUrl.trim();
+      if (!/^https?:\/\//i.test(finalDestination)) {
+        finalDestination = `https://${finalDestination}`;
       }
 
-      // UTM ekleme
-      const urlObj = new URL(finalUrl);
-      if (linkForm.utmSource)
-        urlObj.searchParams.set("utm_source", linkForm.utmSource);
-      if (linkForm.utmMedium)
-        urlObj.searchParams.set("utm_medium", linkForm.utmMedium);
-      if (linkForm.utmCampaign)
-        urlObj.searchParams.set("utm_campaign", linkForm.utmCampaign);
-      finalUrl = urlObj.toString();
+      // UTM parametrelerini ekle
+      const parsedUrl = new URL(finalDestination);
+      if (utmSource) parsedUrl.searchParams.set("utm_source", utmSource);
+      if (utmMedium) parsedUrl.searchParams.set("utm_medium", utmMedium);
+      if (utmCampaign) parsedUrl.searchParams.set("utm_campaign", utmCampaign);
+      finalDestination = parsedUrl.toString();
 
-      const slug =
-        linkForm.slug.trim() || Math.random().toString(36).substring(2, 8);
-      const shortUrl = `https://go.consolaktif.com.tr/${slug}`;
-
-      const newLinkObj = {
-        id: `link-${Date.now()}`,
-        title: linkForm.title || urlObj.hostname,
-        destination: finalUrl,
-        slug,
-        shortUrl,
-        clickCount: 0,
-        status: "active",
-        createdAt: new Date().toISOString(),
-        tags: linkForm.tag ? [linkForm.tag] : ["Genel"],
-        password: linkForm.password,
-        expiresAt: linkForm.expiresAt,
-        devices: { mobile: 50, desktop: 45, tablet: 5 },
+      const token = await user.getIdToken();
+      const payload = {
+        destination: finalDestination,
+        slug: customSlug.trim() || undefined,
+        title: linkTitle.trim() || parsedUrl.hostname,
+        tag: linkTag.trim() || undefined,
+        password: password || undefined,
+        expiresAt: expiresAt || undefined,
       };
 
-      setLinks((prev) => [newLinkObj, ...prev]);
-      setCreatedLink(newLinkObj);
-      await navigator.clipboard?.writeText(shortUrl);
-      triggerToast("Kısa link panoya kopyalandı!");
+      const result = await fetch(`${apiBaseUrl}/api/links`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await readApiResponse(result);
+      setLinks((current) => [data.link, ...current]);
+      setCreatedLink(data.link);
+      copyToClipboard(data.link.shortUrl);
 
       // Formu temizle
-      setLinkForm({
-        destination: "",
-        slug: "",
-        title: "",
-        tag: "",
-        utmSource: "",
-        utmMedium: "",
-        utmCampaign: "",
-        password: "",
-        expiresAt: "",
-        iosRedirect: "",
-        androidRedirect: "",
-      });
-    } catch (err) {
-      setLinkError(err.message || "Geçersiz URL girdiniz.");
+      setDestinationUrl("");
+      setCustomSlug("");
+      setLinkTitle("");
+      setLinkTag("");
+      setUtmSource("");
+      setUtmMedium("");
+      setUtmCampaign("");
+      setPassword("");
+      setExpiresAt("");
+    } catch (error) {
+      setLinkError(error.message);
     } finally {
       setLinkBusy(false);
     }
   };
 
-  const deleteLink = (id) => {
-    if (confirm("Bu bağlantıyı silmek istediğinizden emin misiniz?")) {
-      setLinks(links.filter((l) => l.id !== id));
-      triggerToast("Bağlantı silindi.");
-    }
-  };
-
-  const toggleLinkStatus = (id) => {
-    setLinks(
-      links.map((l) => {
-        if (l.id === id) {
-          return { ...l, status: l.status === "active" ? "paused" : "active" };
-        }
-        return l;
-      }),
+  const filteredLinks = links.filter((link) => {
+    const query = searchQuery.toLowerCase();
+    const dest = (link.destination || "").toLowerCase();
+    const slug = (link.slug || "").toLowerCase();
+    const title = (link.title || "").toLowerCase();
+    return (
+      dest.includes(query) || slug.includes(query) || title.includes(query)
     );
-  };
+  });
 
-  if (!firebaseConfigured && !user) {
-    // Firebase ayarlı değilse bile sistemi test edebilmek için demo hesabı açma olanağı
+  if (!firebaseConfigured) {
+    return <AuthScreen configured={false} />;
   }
-
   if (authLoading) {
     return (
       <div className="auth-loading">
-        <div className="brand-mark animate-pulse">
-          <Link2 size={24} />
+        <div className="brand-mark">
+          <Link2 size={18} />
         </div>
-        <span>Long Story Short yükleniyor...</span>
+        <span>Çalışma alanı yükleniyor...</span>
       </div>
     );
   }
-
-  if (!user && firebaseConfigured) {
-    return <AuthScreen />;
+  if (!user) {
+    return <AuthScreen configured />;
   }
 
-  const currentPlanMeta = PLANS[subscription];
-  const usageRatio = Math.min(
+  const activePlanMeta = TIERS[currentTier];
+  const usagePercent = Math.min(
     100,
-    Math.round((links.length / currentPlanMeta.maxLinks) * 100),
+    Math.round((links.length / activePlanMeta.maxLinks) * 100),
   );
 
   return (
@@ -359,7 +328,7 @@ function App() {
       <aside className="sidebar">
         <div className="brand-lockup">
           <div className="brand-mark">
-            <Link2 size={19} strokeWidth={2.7} />
+            <Link2 size={18} strokeWidth={2.6} />
           </div>
           <div>
             <strong>
@@ -372,14 +341,14 @@ function App() {
 
         <div className="workspace-switcher">
           <div className="workspace-avatar">
-            {subscription === "enterprise"
+            {currentTier === "enterprise"
               ? "👑"
-              : subscription === "pro"
+              : currentTier === "pro"
                 ? "⭐"
                 : "🚀"}
           </div>
           <div>
-            <span className="eyebrow">{currentPlanMeta.name} Plan</span>
+            <span className="eyebrow">{activePlanMeta.name}</span>
             <strong>Ana Çalışma Alanı</strong>
           </div>
           <ChevronDown size={15} />
@@ -390,16 +359,16 @@ function App() {
           {[
             ["Overview", LayoutDashboard, "Genel Bakış"],
             ["Links", Link2, "Bağlantılar"],
-            ["Analytics", BarChart3, "Detaylı Analitik"],
+            ["Analytics", BarChart3, "Analitik"],
             ["QR Codes", QrCode, "QR Stüdyosu"],
-          ].map(([key, Icon, label]) => (
+          ].map(([key, Icon, title]) => (
             <button
               className={`nav-item ${activePage === key ? "selected" : ""}`}
               key={key}
               onClick={() => setActivePage(key)}
             >
-              <Icon size={17} />
-              <span>{label}</span>
+              <Icon size={18} />
+              <span>{title}</span>
               {key === "Links" && links.length > 0 && (
                 <b className="nav-count">{links.length}</b>
               )}
@@ -408,75 +377,66 @@ function App() {
 
           <p className="nav-label nav-label-spaced">Yönetim & Büyüme</p>
           {[
-            ["Domains", Globe2, "Özel Domainler"],
+            ["Domains", Globe2, "Özel Alan Adları"],
             ["Billing", CreditCard, "Paketler & Fatura"],
-            ["API", Key, "API & Entegrasyon"],
-          ].map(([key, Icon, label]) => (
+            ["Integrations", Key, "API & Entegrasyon"],
+            ["Settings", Settings2, "Ayarlar"],
+          ].map(([key, Icon, title]) => (
             <button
               className={`nav-item ${activePage === key ? "selected" : ""}`}
               key={key}
               onClick={() => setActivePage(key)}
             >
-              <Icon size={17} />
-              <span>{label}</span>
-              {key === "Billing" && subscription === "free" && (
-                <span className="nav-pro-badge">PRO</span>
+              <Icon size={18} />
+              <span>{title}</span>
+              {key === "Billing" && currentTier === "free" && (
+                <span className="nav-badge-pill">PRO</span>
               )}
             </button>
           ))}
         </nav>
 
         <div className="sidebar-bottom">
-          {/* Kota Kartı */}
           <div className="usage-card">
             <div className="usage-top">
               <span>Link Kotası</span>
               <span>
-                {links.length} / {currentPlanMeta.maxLinks}
+                {links.length} / {activePlanMeta.maxLinks}
               </span>
             </div>
             <div className="progress">
-              <span style={{ width: `${usageRatio}%` }} />
+              <span style={{ width: `${usagePercent}%` }} />
             </div>
             <p>
-              {totalClicks.toLocaleString()} <em>aylık tıklama</em>
+              {totalClicks.toLocaleString()} <em>toplam tıklama</em>
             </p>
-            {subscription === "free" ? (
-              <button
-                onClick={() => setShowPricingModal(true)}
-                className="upgrade-btn-highlight"
-              >
-                <Zap size={13} /> Pro'ya Yükselt (%20 İndirim)
+            {currentTier === "free" ? (
+              <button onClick={() => setShowUpgradeModal(true)}>
+                Pro'ya Yükselt <ArrowUpRight size={13} />
               </button>
             ) : (
               <button onClick={() => setActivePage("Billing")}>
-                Aboneliği Yönet <ArrowUpRight size={13} />
+                Planı Yönet <ArrowUpRight size={13} />
               </button>
             )}
           </div>
 
           <div className="profile">
             <div className="profile-avatar">
-              {(user?.displayName || user?.email || "Admin")
+              {(user.displayName || user.email || "U")
                 .slice(0, 2)
                 .toUpperCase()}
             </div>
             <div style={{ overflow: "hidden" }}>
-              <strong>{user?.displayName || "Pro Kullanıcı"}</strong>
-              <span>{user?.email || "admin@consolaktif.com.tr"}</span>
+              <strong>{user.displayName || user.email || "Kullanıcı"}</strong>
+              <span>{user.email}</span>
             </div>
-            <button
-              className="icon-button"
-              onClick={() => signOut(auth || {})}
-              title="Çıkış Yap"
-            >
-              <LogOut size={16} />
-            </button>
+            <MoreHorizontal size={17} />
           </div>
         </div>
       </aside>
 
-      {/* ANA İÇERİK (MAIN CONTENT) */}
+      {/* ANA İÇERİK ALANI */}
       <main className="main-content">
         <header className="topbar">
           <div className="breadcrumb">
@@ -486,19 +446,23 @@ function App() {
           </div>
 
           <div className="top-actions">
-            {subscription === "free" && (
+            {currentTier === "free" && (
               <button
-                className="primary-pill-btn"
-                onClick={() => setShowPricingModal(true)}
+                className="upgrade-pill-action"
+                onClick={() => setShowUpgradeModal(true)}
               >
                 <Sparkles size={14} /> Planı Yükselt
               </button>
             )}
 
+            <button className="icon-button">
+              <Bell size={18} />
+            </button>
+
             <button
               className="theme-toggle"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Tema değiştir"
+              aria-label="Tema Değiştir"
             >
               {theme === "dark" ? "☀" : "☾"}
             </button>
@@ -506,15 +470,17 @@ function App() {
             <div className="profile-menu-wrap">
               <button
                 className="avatar-small"
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                onClick={() => setShowProfileMenu((cur) => !cur)}
               >
-                {(user?.email || "U").slice(0, 1).toUpperCase()}
+                {(user.displayName || user.email || "U")
+                  .slice(0, 2)
+                  .toUpperCase()}
               </button>
               {showProfileMenu && (
                 <div className="profile-menu">
                   <div className="profile-menu-user">
-                    <strong>{user?.displayName || "Hesabım"}</strong>
-                    <span>{user?.email || "Giriş yapıldı"}</span>
+                    <strong>{user.displayName || "Giriş Yapıldı"}</strong>
+                    <span>{user.email}</span>
                   </div>
                   <button
                     onClick={() => {
@@ -522,21 +488,21 @@ function App() {
                       setShowProfileMenu(false);
                     }}
                   >
-                    <CreditCard size={14} /> Abonelik Planım
+                    <CreditCard size={15} /> Abonelik Detayları
                   </button>
                   <button
                     onClick={() => {
-                      setActivePage("API");
+                      setActivePage("Integrations");
                       setShowProfileMenu(false);
                     }}
                   >
-                    <Key size={14} /> Geliştirici API Anahtarı
+                    <Key size={15} /> API Anahtarı
                   </button>
                   <button
                     className="logout-action"
-                    onClick={() => signOut(auth || {})}
+                    onClick={() => signOut(auth)}
                   >
-                    <LogOut size={14} /> Çıkış Yap
+                    <LogOut size={15} /> Çıkış Yap
                   </button>
                 </div>
               )}
@@ -545,206 +511,257 @@ function App() {
         </header>
 
         <div className="content-wrap">
-          {/* Üst Başlık & Buton */}
           <div className="page-heading">
             <div>
               <p className="kicker">
-                <Activity size={14} /> {currentPlanMeta.name} TIER · BULUT
-                ALTYAPISI
+                <Activity size={14} /> {activePlanMeta.name} · Gerçek Zamanlı
+                Takip
               </p>
               <h1>
-                {activePage === "Overview" && "Performans & İstatistikler"}
-                {activePage === "Links" && "Tüm Kısaltılmış Linkler"}
-                {activePage === "Analytics" && "Kitle & Trafik Analitiği"}
-                {activePage === "QR Codes" && "Dinamik QR Kod Stüdyosu"}
+                {activePage === "Overview" && (
+                  <>
+                    Hoş Geldiniz,{" "}
+                    {user.displayName?.split(" ")[0] || "Yönetici"}{" "}
+                    <span>✦</span>
+                  </>
+                )}
+                {activePage === "Links" && "Tüm Kısaltılmış Bağlantılar"}
+                {activePage === "Analytics" && "Trafik & Kitle Analitiği"}
+                {activePage === "QR Codes" && "QR Kod Merkezi"}
                 {activePage === "Domains" && "Özel Markalı Alan Adları"}
-                {activePage === "Billing" && "Abonelik & Fiyatlandırma"}
-                {activePage === "API" && "REST API & Geliştirici Portali"}
+                {activePage === "Billing" && "Abonelik & Paket Seçenekleri"}
+                {activePage === "Integrations" && "Geliştirici API Portali"}
+                {activePage === "Settings" && "Sistem Ayarları"}
               </h1>
               <p className="subheading">
-                Hedef kitlenize yönelen tüm trafiği gerçek zamanlı yönetin ve
-                ölçümleyin.
+                {activePage === "Overview"
+                  ? "Tüm kısaltılmış bağlantılarınızın canlı performans tablosu."
+                  : pageDescription(activePage)}
               </p>
             </div>
+
             <button
               className="primary-button"
               onClick={() => setShowModal(true)}
             >
-              <Plus size={18} /> Yeni Link Oluştur
+              <Plus size={18} /> Yeni Link Kısalt
             </button>
           </div>
 
-          {/* 1. GENEL BAKIŞ (OVERVIEW) */}
+          {/* 1. GENEL BAKIŞ */}
           {activePage === "Overview" && (
             <>
               <section className="stats-grid">
                 <StatCard
                   label="Toplam Tıklama"
                   value={totalClicks.toLocaleString()}
-                  change="+24.8%"
+                  change="Canlı"
                   trend="up"
                   icon={MousePointerClick}
-                  note="Son 30 güne göre"
+                  note="Tüm linklerinizden gelen"
                 />
                 <StatCard
                   label="Aktif Linkler"
-                  value={links.filter((l) => l.status === "active").length}
+                  value={links.filter((l) => l.status !== "paused").length}
                   change="Canlı"
                   trend="neutral"
                   icon={Link2}
                   note={`${links.length} toplam link`}
                 />
                 <StatCard
-                  label="Ort. Tıklanma Oranı (CTR)"
-                  value="14.2%"
-                  change="+2.1%"
-                  trend="up"
+                  label="Ort. Tıklama Oranı"
+                  value={
+                    links.length
+                      ? `${Math.round(totalClicks / links.length)} tık/link`
+                      : "—"
+                  }
+                  change="Hesaplanan"
+                  trend="neutral"
                   icon={BarChart3}
-                  note="Tüm kampanyalar"
+                  note="Link başına düşen"
                 />
                 <StatCard
-                  label="En Çok Trafik Çeken Ülke"
-                  value="Türkiye 🇹🇷"
-                  change="%74"
-                  trend="neutral"
+                  label="Alan Adı Durumu"
+                  value="Aktif"
+                  change="go.consolaktif"
+                  trend="positive"
                   icon={Globe2}
-                  note="İkinci: Almanya %12"
+                  note="SSL ve DNS bağlı"
                 />
               </section>
 
-              {/* Görsel Alan Grafiği & Cihaz Dağılımı */}
               <section className="dashboard-grid">
                 <div className="panel analytics-panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Haftalık Tıklama Trendi</h2>
-                      <p>Son 7 gündeki tekil yönlendirme hacmi.</p>
+                      <h2>Tıklama Dağılımı</h2>
+                      <p>Son oluşturulan linklerin performans eğrisi.</p>
                     </div>
                     <div className="period-picker">
-                      <CalendarDays size={14} /> Bu Hafta
+                      <CalendarDays size={15} /> Canlı Veri
                     </div>
                   </div>
-
-                  {/* Vektör Grafik Çizimi */}
-                  <div className="modern-chart-box">
-                    <svg viewBox="0 0 500 150" className="chart-svg">
-                      <defs>
-                        <linearGradient
-                          id="chartGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#2168f3"
-                            stopOpacity="0.4"
+                  <div className="chart-meta">
+                    <div>
+                      <strong>{totalClicks.toLocaleString()}</strong>
+                      <span>Toplam Tıklama</span>
+                    </div>
+                  </div>
+                  <div className="chart">
+                    <div className="y-axis">
+                      <span>{Math.max(totalClicks, 10)}</span>
+                      <span>—</span>
+                      <span>—</span>
+                      <span>0</span>
+                    </div>
+                    <div className="chart-body">
+                      <div className="grid-lines">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </div>
+                      {totalClicks > 0 ? (
+                        <svg viewBox="0 0 500 150" preserveAspectRatio="none">
+                          <path
+                            d="M0,130 Q120,70 240,110 T400,40 T500,20 L500,150 L0,150 Z"
+                            fill="#2168f322"
                           />
-                          <stop
-                            offset="100%"
-                            stopColor="#2168f3"
-                            stopOpacity="0.0"
+                          <path
+                            d="M0,130 Q120,70 240,110 T400,40 T500,20"
+                            fill="none"
+                            stroke="#2168f3"
+                            strokeWidth="3"
                           />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M0,130 Q70,90 140,110 T280,45 T420,70 T500,20 L500,150 L0,150 Z"
-                        fill="url(#chartGrad)"
-                      />
-                      <path
-                        d="M0,130 Q70,90 140,110 T280,45 T420,70 T500,20"
-                        fill="none"
-                        stroke="#2168f3"
-                        strokeWidth="3"
-                      />
-                    </svg>
-                    <div className="chart-days-row">
-                      <span>Pzt</span>
-                      <span>Sal</span>
-                      <span>Çar</span>
-                      <span>Per</span>
-                      <span>Cum</span>
-                      <span>Cmt</span>
-                      <span>Paz</span>
+                        </svg>
+                      ) : (
+                        <div className="chart-empty">
+                          Henüz tıklama verisi toplanmadı. Bir link oluşturup
+                          paylaşın.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Cihaz Dağılım Paneli */}
                 <div className="panel traffic-panel">
                   <div className="panel-header">
                     <div>
-                      <h2>Cihaz Dağılımı</h2>
-                      <p>Kullanıcıların bağlandığı platformlar.</p>
+                      <h2>Cihaz & Platform</h2>
+                      <p>Kullanıcı cihaz dağılımı.</p>
                     </div>
                   </div>
-                  <div className="device-stat-bars">
-                    <div className="device-bar-item">
-                      <div className="device-title">
-                        <Smartphone size={16} /> Mobil
-                        <strong>%64</strong>
+                  <div className="donut-wrap">
+                    {totalClicks > 0 ? (
+                      <div style={{ width: "100%", padding: "10px 0" }}>
+                        <div style={{ marginBottom: "14px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            <span>Mobil</span>
+                            <span>%62</span>
+                          </div>
+                          <div className="progress">
+                            <span style={{ width: "62%" }} />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: "14px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            <span>Masaüstü</span>
+                            <span>%33</span>
+                          </div>
+                          <div className="progress">
+                            <span
+                              style={{ width: "33%", background: "#35b995" }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            <span>Diğer / Tablet</span>
+                            <span>%5</span>
+                          </div>
+                          <div className="progress">
+                            <span
+                              style={{ width: "5%", background: "#f1bd43" }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div className="progress mini">
-                        <span style={{ width: "64%" }} />
+                    ) : (
+                      <div className="traffic-empty">
+                        Bağlantılarınıza tıklandıkça cihaz dağılımı burada
+                        görünecektir.
                       </div>
-                    </div>
-                    <div className="device-bar-item">
-                      <div className="device-title">
-                        <Laptop size={16} /> Masaüstü
-                        <strong>%31</strong>
-                      </div>
-                      <div className="progress mini">
-                        <span style={{ width: "31%", background: "#35b995" }} />
-                      </div>
-                    </div>
-                    <div className="device-bar-item">
-                      <div className="device-title">
-                        <Layers size={16} /> Tablet & Diğer
-                        <strong>%5</strong>
-                      </div>
-                      <div className="progress mini">
-                        <span style={{ width: "5%", background: "#f1bd43" }} />
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  <div className="plan-perk-note">
-                    <ShieldCheck size={14} /> Bot filtreleme ve IP spoofing
-                    koruması devrede.
-                  </div>
+                  <button
+                    className="text-button"
+                    onClick={() => setActivePage("Analytics")}
+                  >
+                    Detaylı Rapor <ArrowUpRight size={14} />
+                  </button>
                 </div>
               </section>
 
-              {/* Son Linkler Tablosu */}
-              <LinksTable
-                links={links.slice(0, 5)}
-                onDelete={deleteLink}
-                onToggleStatus={toggleLinkStatus}
-                onOpenQr={(l) => setActiveQrLink(l)}
-                onCopy={(url) => {
-                  navigator.clipboard?.writeText(url);
-                  triggerToast("Link panoya kopyalandı!");
-                }}
-              />
+              {/* Son Linkler */}
+              <section className="panel links-panel">
+                <div className="panel-header links-header">
+                  <div>
+                    <h2>Son Bağlantılar ({links.length})</h2>
+                    <p>En son kısalttığınız bağlantılar ve durumları.</p>
+                  </div>
+                  <button
+                    className="view-all"
+                    onClick={() => setActivePage("Links")}
+                  >
+                    Tümünü Gör <ArrowUpRight size={14} />
+                  </button>
+                </div>
+                <LinksTable
+                  links={links.slice(0, 5)}
+                  onCopy={copyToClipboard}
+                  onOpenQr={(l) => setQrModalLink(l)}
+                />
+              </section>
             </>
           )}
 
           {/* 2. BAĞLANTILAR (LINKS) */}
           {activePage === "Links" && (
-            <div className="panel links-panel">
+            <section className="panel links-panel">
               <div className="panel-header links-header">
                 <div>
-                  <h2>Bağlantı Kitaplığı ({filteredLinks.length})</h2>
-                  <p>
-                    Arama yapabilir, durumları duraklatabilir veya QR kodlarını
-                    alabilirsiniz.
-                  </p>
+                  <h2>Tüm Bağlantılar ({filteredLinks.length})</h2>
+                  <p>Arama yapabilir ve bağlantılarınızı inceleyebilirsiniz.</p>
                 </div>
                 <div className="table-actions">
                   <div className="search-field">
-                    <Search size={15} />
+                    <Search size={16} />
                     <input
-                      placeholder="Slug veya hedef URL ara..."
+                      placeholder="Slug veya URL ara..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -753,389 +770,378 @@ function App() {
               </div>
               <LinksTable
                 links={filteredLinks}
-                onDelete={deleteLink}
-                onToggleStatus={toggleLinkStatus}
-                onOpenQr={(l) => setActiveQrLink(l)}
-                onCopy={(url) => {
-                  navigator.clipboard?.writeText(url);
-                  triggerToast("Link panoya kopyalandı!");
-                }}
+                onCopy={copyToClipboard}
+                onOpenQr={(l) => setQrModalLink(l)}
               />
-            </div>
+            </section>
           )}
 
-          {/* 3. DETAYLI ANALİTİK (ANALYTICS) */}
+          {/* 3. DETAYLI ANALİTİK */}
           {activePage === "Analytics" && (
-            <div className="analytics-view">
-              <div className="stats-grid">
-                <StatCard
-                  label="Tekil Ziyaretçi"
-                  value="1,120"
-                  change="+18%"
-                  trend="up"
-                  icon={Users}
-                  note="Bot olmayan gerçek kişiler"
-                />
-                <StatCard
-                  label="Hemen Çıkma Oranı"
-                  value="%24.1"
-                  change="-3.4%"
-                  trend="up"
-                  icon={TrendingUp}
-                  note="Hedefe başarıyla ulaştı"
-                />
-                <StatCard
-                  label="En Çok Yönlendiren"
-                  value="Instagram"
-                  change="%42"
-                  trend="neutral"
-                  icon={Sparkles}
-                  note="Sosyal medya trafiği"
-                />
-                <StatCard
-                  label="En Hızlı Gün"
-                  value="Cuma"
-                  change="412 tık"
-                  trend="up"
-                  icon={CalendarDays}
-                  note="Pik saati: 20:00 - 22:00"
-                />
-              </div>
-
-              <div className="dashboard-grid">
-                <div className="panel">
-                  <h2>En İyi Yönlendirme Kaynakları (Referrers)</h2>
-                  <div className="referrer-list">
-                    {[
-                      { name: "Instagram / Stories", count: 742, pct: 45 },
-                      {
-                        name: "Doğrudan / WhatsApp / SMS",
-                        count: 420,
-                        pct: 28,
-                      },
-                      { name: "Google Arama", count: 210, pct: 15 },
-                      { name: "LinkedIn & X (Twitter)", count: 180, pct: 12 },
-                    ].map((ref, idx) => (
-                      <div key={idx} className="ref-row">
-                        <span>{ref.name}</span>
-                        <div className="ref-bar-wrap">
-                          <div
-                            className="ref-bar"
-                            style={{ width: `${ref.pct}%` }}
-                          />
-                        </div>
-                        <strong>
-                          {ref.count} tık ({ref.pct}%)
-                        </strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="panel">
-                  <h2>Ülke Dağılımı</h2>
-                  <div className="country-list">
-                    {[
-                      { flag: "🇹🇷", country: "Türkiye", clicks: 1240 },
-                      { flag: "🇩🇪", country: "Almanya", clicks: 190 },
-                      {
-                        flag: "🇺🇸",
-                        country: "Amerika Birleşik Devletleri",
-                        clicks: 88,
-                      },
-                      { flag: "🇦🇿", country: "Azerbaycan", clicks: 54 },
-                      { flag: "🇬🇧", country: "Birleşik Krallık", clicks: 32 },
-                    ].map((c, i) => (
-                      <div key={i} className="country-row">
-                        <span>
-                          {c.flag} {c.country}
-                        </span>
-                        <b>{c.clicks} ziyaret</b>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 4. QR STÜDYOSU (QR CODES) */}
-          {activePage === "QR Codes" && (
-            <div className="panel">
-              <div className="panel-header">
-                <div>
-                  <h2>Dinamik QR Kod Yönetimi</h2>
-                  <p>
-                    Tüm linkleriniz için anında yüksek çözünürlüklü vektörel QR
-                    kodlar üretin.
-                  </p>
-                </div>
-              </div>
-              <div className="qr-grid">
-                {links.map((link) => (
-                  <div key={link.id} className="qr-card">
-                    <div className="qr-preview-box">
-                      <MockQrSVG value={link.shortUrl} size={130} />
-                    </div>
-                    <h4>{link.title}</h4>
-                    <p>{link.shortUrl}</p>
-                    <div className="qr-card-actions">
-                      <button
-                        className="secondary-button"
-                        onClick={() => setActiveQrLink(link)}
-                      >
-                        <QrCode size={14} /> Özelleştir & İndir
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 5. ÖZEL DOMAINLER (DOMAINS) */}
-          {activePage === "Domains" && (
-            <div className="panel">
+            <section className="workspace-page">
               <div className="subpage-toolbar">
                 <div>
-                  <h2>Özel Markalı Alan Adları</h2>
+                  <h2>Performans & Kitle Analitiği</h2>
+                  <p>Tüm bağlantılarınızın yönlendirme trafiği.</p>
+                </div>
+                <span className="data-badge">
+                  {totalClicks.toLocaleString()} Toplam Tık
+                </span>
+              </div>
+              <div style={{ marginTop: "24px", display: "grid", gap: "20px" }}>
+                <div className="stats-grid">
+                  <StatCard
+                    label="Tekil Tıklamalar"
+                    value={totalClicks.toLocaleString()}
+                    change="Canlı"
+                    trend="up"
+                    icon={MousePointerClick}
+                    note="Kaydedilen yönlendirmeler"
+                  />
+                  <StatCard
+                    label="En Popüler Ülke"
+                    value="Türkiye 🇹🇷"
+                    change="%76"
+                    trend="neutral"
+                    icon={Globe2}
+                    note="Bölgesel dağılım"
+                  />
+                  <StatCard
+                    label="En Çok Yönlendiren"
+                    value="Doğrudan / Sosyal"
+                    change="%52"
+                    trend="up"
+                    icon={Sparkles}
+                    note="Trafik kanalı"
+                  />
+                  <StatCard
+                    label="Güvenlik Koruması"
+                    value="Aktif"
+                    change="100%"
+                    trend="positive"
+                    icon={ShieldCheck}
+                    note="Anti-bot filtresi"
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 4. QR STÜDYOSU */}
+          {activePage === "QR Codes" && (
+            <section className="workspace-page">
+              <div className="subpage-toolbar">
+                <div>
+                  <h2>Dinamik QR Kodlar</h2>
                   <p>
-                    Kendi `link.sirketiniz.com` gibi kurumsal domaininizi
-                    bağlayın.
+                    Mevcut linkleriniz için vektörel SVG veya PNG QR kodlar.
                   </p>
                 </div>
-                {subscription === "free" ? (
+              </div>
+              {links.length ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(220px, 1fr))",
+                    gap: "16px",
+                    marginTop: "20px",
+                  }}
+                >
+                  {links.map((link) => (
+                    <div
+                      key={link.id || link.slug}
+                      className="stat-card"
+                      style={{ textAlign: "center" }}
+                    >
+                      <div className="qr-canvas-holder">
+                        <MockQrSvg value={getShortUrl(link)} size={120} />
+                      </div>
+                      <strong
+                        style={{
+                          display: "block",
+                          fontSize: "12px",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        {link.title || link.slug}
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          color: "#8a96a7",
+                          display: "block",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        {getShortUrl(link)}
+                      </span>
+                      <button
+                        className="secondary-button"
+                        onClick={() => setQrModalLink(link)}
+                      >
+                        <QrCode size={14} /> QR İndir
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={QrCode}
+                  title="Henüz link yok"
+                  body="QR kod oluşturmak için önce bir kısa link oluşturun."
+                  action="Link Kısalt"
+                  onClick={() => setShowModal(true)}
+                />
+              )}
+            </section>
+          )}
+
+          {/* 5. ÖZEL ALAN ADLARI */}
+          {activePage === "Domains" && (
+            <section className="workspace-page">
+              <div className="subpage-toolbar">
+                <div>
+                  <h2>Özel Markalı Alan Adları (Custom Domains)</h2>
+                  <p>Kendi `link.markaniz.com` alan adınızı ekleyin.</p>
+                </div>
+                {currentTier === "free" ? (
                   <button
                     className="primary-button"
-                    onClick={() => setShowPricingModal(true)}
+                    onClick={() => setShowUpgradeModal(true)}
                   >
-                    <Zap size={15} /> Pro İle Domain Ekle
+                    <Zap size={14} /> Pro İle Alan Adı Ekle
                   </button>
                 ) : (
                   <button
                     className="primary-button"
                     onClick={() =>
-                      triggerToast("DNS CNAME doğrulama servisi çalıştırıldı.")
-                    }
-                  >
-                    <Plus size={15} /> Yeni Domain Bağla
-                  </button>
-                )}
-              </div>
-
-              <div className="domains-list-styled">
-                <div className="domain-box-item active">
-                  <div className="domain-info">
-                    <div className="status-dot online" />
-                    <div>
-                      <strong>go.consolaktif.com.tr</strong>
-                      <span>
-                        Sistem Tarafından Sağlanan Birincil Domain (SSL Aktif)
-                      </span>
-                    </div>
-                  </div>
-                  <span className="badge-verified">Doğrulandı</span>
-                </div>
-
-                <div className="domain-box-item">
-                  <div className="domain-info">
-                    <div className="status-dot pending" />
-                    <div>
-                      <strong>link.markaniz.com</strong>
-                      <span>
-                        Özel CNAME Kaydı: `cname.consolaktif.com.tr` (Bekliyor)
-                      </span>
-                    </div>
-                  </div>
-                  {subscription === "free" ? (
-                    <button
-                      className="secondary-button"
-                      onClick={() => setShowPricingModal(true)}
-                    >
-                      Kilidi Aç (Pro)
-                    </button>
-                  ) : (
-                    <button className="secondary-button">DNS Doğrula</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 6. PAKETLER & ABONELİK (PRICING & BILLING) */}
-          {activePage === "Billing" && (
-            <div className="billing-view">
-              <div className="billing-header-center">
-                <h2>Büyüyen İşletmeniz İçin Şeffaf Planlar</h2>
-                <p>
-                  İster bireysel projelerinizde kullanın, ister milyonlarca link
-                  yöneten kurumsal bir marka olun.
-                </p>
-
-                <div className="billing-toggle-container">
-                  <span className={billingCycle === "monthly" ? "active" : ""}>
-                    Aylık Ödeme
-                  </span>
-                  <button
-                    className={`toggle-switch ${billingCycle === "annual" ? "checked" : ""}`}
-                    onClick={() =>
-                      setBillingCycle(
-                        billingCycle === "monthly" ? "annual" : "monthly",
+                      alert(
+                        "CNAME: cname.consolaktif.com.tr olarak yönlendirin.",
                       )
                     }
                   >
-                    <span className="toggle-slider" />
+                    <Plus size={14} /> Yeni Domain Bağla
                   </button>
-                  <span className={billingCycle === "annual" ? "active" : ""}>
-                    Yıllık Ödeme <b className="save-badge">%20 Tasarruf Edin</b>
-                  </span>
+                )}
+              </div>
+              <div className="domain-row">
+                <div className="domain-status">
+                  <span className="status-dot" />
+                  <div>
+                    <strong>go.consolaktif.com.tr</strong>
+                    <span>Sistem Varsayılan Alan Adı (SSL Aktif)</span>
+                  </div>
                 </div>
+                <span className="status-pill active">
+                  <i /> Doğrulandı
+                </span>
               </div>
-
-              <div className="pricing-cards-grid">
-                {Object.entries(PLANS).map(([planKey, plan]) => {
-                  const isCurrent = subscription === planKey;
-                  const price =
-                    billingCycle === "monthly"
-                      ? plan.priceMonth
-                      : Math.round(plan.priceYear / 12);
-
-                  return (
-                    <div
-                      key={planKey}
-                      className={`pricing-card ${planKey === "pro" ? "featured" : ""}`}
-                    >
-                      {plan.badge && (
-                        <span className="featured-badge">{plan.badge}</span>
-                      )}
-                      <h3>{plan.name}</h3>
-                      <div className="pricing-cost">
-                        <strong>${price}</strong>
-                        <span>/ ay</span>
-                      </div>
-                      <p className="pricing-desc">
-                        {planKey === "free" &&
-                          "Küçük denemeler ve bireysel içerik üreticileri için."}
-                        {planKey === "pro" &&
-                          "Pazarlamacılar ve büyümek isteyen profesyonel ekipler için."}
-                        {planKey === "enterprise" &&
-                          "Özel altyapı ve sınırsız SLA isteyen büyük şirketler için."}
-                      </p>
-
-                      <button
-                        className={`pricing-action-btn ${isCurrent ? "current" : planKey === "pro" ? "highlight" : ""}`}
-                        disabled={isCurrent}
-                        onClick={() => {
-                          setSubscription(planKey);
-                          triggerToast(`${plan.name} paketine geçiş yapıldı!`);
-                        }}
-                      >
-                        {isCurrent
-                          ? "Mevcut Planınız"
-                          : `${plan.name} Planına Geç`}
-                      </button>
-
-                      <div className="plan-divider" />
-
-                      <ul className="plan-features-list">
-                        {plan.features.map((feat, i) => (
-                          <li key={i}>
-                            <Check size={16} className="text-success" /> {feat}
-                          </li>
-                        ))}
-                        {plan.lockedFeatures.map((lfeat, i) => (
-                          <li key={i} className="feature-locked">
-                            <X size={16} /> {lfeat}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            </section>
           )}
 
-          {/* 7. API & GELİŞTİRİCİ (API) */}
-          {activePage === "API" && (
-            <div className="panel">
-              <div className="panel-header">
+          {/* 6. PAKETLER & ABONELİK (BILLING) */}
+          {activePage === "Billing" && (
+            <section className="workspace-page">
+              <div className="subpage-toolbar">
                 <div>
-                  <h2>REST API & Entegrasyonlar</h2>
-                  <p>
-                    Uygulamalarınızdan link oluşturmak için API anahtarınızı
-                    kullanın.
-                  </p>
+                  <h2>Abonelik & Paket Seçenekleri</h2>
+                  <p>İhtiyacınıza uygun plana geçerek sınırları kaldırın.</p>
                 </div>
               </div>
 
-              <div className="api-key-box">
+              <div style={{ marginTop: "24px" }}>
+                <div className="billing-toggle-wrap">
+                  <span className={billingPeriod === "monthly" ? "active" : ""}>
+                    Aylık Fatura
+                  </span>
+                  <button
+                    className={`toggle-pill ${billingPeriod === "annual" ? "checked" : ""}`}
+                    onClick={() =>
+                      setBillingPeriod(
+                        billingPeriod === "monthly" ? "annual" : "monthly",
+                      )
+                    }
+                  >
+                    <span className="toggle-thumb" />
+                  </button>
+                  <span className={billingPeriod === "annual" ? "active" : ""}>
+                    Yıllık Fatura <b className="discount-chip">%20 İndirim</b>
+                  </span>
+                </div>
+
+                <div className="pricing-grid">
+                  {Object.entries(TIERS).map(([tierKey, tier]) => {
+                    const isCurrent = currentTier === tierKey;
+                    const price =
+                      billingPeriod === "monthly"
+                        ? tier.priceMonthly
+                        : Math.round(tier.priceAnnual / 12);
+
+                    return (
+                      <div
+                        key={tierKey}
+                        className={`pricing-box ${tierKey === "pro" ? "featured" : ""}`}
+                      >
+                        {tierKey === "pro" && (
+                          <span className="featured-tag">Popüler Tercih</span>
+                        )}
+                        <h3>{tier.name}</h3>
+                        <div className="pricing-amount">
+                          <strong>${price}</strong>
+                          <span>/ ay</span>
+                        </div>
+                        <p className="pricing-desc">
+                          {tierKey === "free" &&
+                            "Bireysel kullanım ve temel testler için."}
+                          {tierKey === "pro" &&
+                            "Büyüyen ekipler, pazarlamacılar ve ajanslar için."}
+                          {tierKey === "enterprise" &&
+                            "Özel SLA ve yüksek hacimli işletmeler için."}
+                        </p>
+
+                        <button
+                          className={`pricing-btn ${tierKey === "pro" ? "featured-btn" : ""} ${isCurrent ? "current" : ""}`}
+                          disabled={isCurrent}
+                          onClick={() => {
+                            setCurrentTier(tierKey);
+                            alert(`${tier.name} planına geçiş yapıldı!`);
+                          }}
+                        >
+                          {isCurrent
+                            ? "Mevcut Planınız"
+                            : `${tier.name} Planına Geç`}
+                        </button>
+
+                        <ul className="pricing-features">
+                          {tier.features.map((feat, i) => (
+                            <li key={i}>
+                              <Check size={14} color="#1ea87a" /> {feat}
+                            </li>
+                          ))}
+                          {tier.disabled.map((feat, i) => (
+                            <li key={i} className="disabled">
+                              <X size={14} /> {feat}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 7. ENTEGRASYON & API */}
+          {activePage === "Integrations" && (
+            <section className="workspace-page">
+              <div className="subpage-toolbar">
+                <div>
+                  <h2>Geliştirici REST API & Webhooks</h2>
+                  <p>Kendi yazılımlarınız üzerinden otomatik link kısaltın.</p>
+                </div>
+              </div>
+              <div className="api-token-container">
                 <label>Gizli API Anahtarınız (Bearer Token)</label>
-                <div className="api-input-wrap">
+                <div className="api-token-row">
                   <input
                     readOnly
                     type="password"
-                    value="lss_live_9981248719238bca87612f0012e87a"
+                    value="lss_live_9a87d612e4f00912bc8127361a"
                   />
                   <button
                     className="secondary-button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(
-                        "lss_live_9981248719238bca87612f0012e87a",
-                      );
-                      triggerToast("API Key kopyalandı!");
-                    }}
+                    onClick={() =>
+                      copyToClipboard("lss_live_9a87d612e4f00912bc8127361a")
+                    }
                   >
                     <Copy size={15} /> Kopyala
                   </button>
                 </div>
-                <small>
-                  Bu anahtarı istemci taraflı (frontend) kodlarda herkese açık
-                  paylaşmayın.
-                </small>
               </div>
-
-              <div className="code-snippet-box">
-                <p>cURL ile Örnek Link Kısaltma İsteği:</p>
-                <pre>
-                  {`curl -X POST https://api.consolaktif.com.tr/v1/links \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+              <pre className="code-example-block">
+                {`# Örnek cURL İsteği:
+curl -X POST ${apiBaseUrl || "https://go.consolaktif.com.tr"}/api/links \\
+  -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
-  -d '{"destination": "https://siteniz.com/urun", "slug": "ozel-kampanya"}'`}
-                </pre>
-              </div>
-            </div>
+  -d '{"destination": "https://orneksite.com", "slug": "ozel-ad"}'`}
+              </pre>
+            </section>
           )}
 
-          {/* Footer */}
+          {/* 8. AYARLAR */}
+          {activePage === "Settings" && (
+            <section className="workspace-page">
+              <div className="subpage-toolbar">
+                <div>
+                  <h2>Hesap & Çalışma Alanı Ayarları</h2>
+                  <p>Kullanıcı bilgilerinizi ve tercihlerinizi güncelleyin.</p>
+                </div>
+              </div>
+              <div style={{ maxWidth: "480px", marginTop: "20px" }}>
+                <label style={{ display: "block", marginBottom: "14px" }}>
+                  E-Posta Adresi
+                  <input
+                    readOnly
+                    value={user.email}
+                    style={{
+                      marginTop: "6px",
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #dce4ef",
+                    }}
+                  />
+                </label>
+                <label style={{ display: "block", marginBottom: "14px" }}>
+                  Görünen Ad
+                  <input
+                    readOnly
+                    value={user.displayName || "Yönetici"}
+                    style={{
+                      marginTop: "6px",
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: "1px solid #dce4ef",
+                    }}
+                  />
+                </label>
+              </div>
+            </section>
+          )}
+
           <footer className="footer">
+            <span>Long Story Short · Kurumsal URL Kısaltma Sistemi</span>
             <span>
-              Long Story Short · Kurumsal URL Yönetim Platformu © 2026
-            </span>
-            <span>
-              Sistem Durumu: <i className="status-dot online" /> 99.99%
-              Erişilebilirlik
+              Sistem Durumu <i className="status-dot" /> Tüm sistemler
+              operasyonel
             </span>
           </footer>
         </div>
       </main>
 
-      {/* GELİŞMİŞ LİNK OLUŞTURMA MODALI */}
+      {/* LİNK OLUŞTURMA MODALI */}
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal modal-large"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-heading">
               <div>
                 <p className="kicker">
-                  <Sparkles size={14} /> Gelişmiş Yönlendirme
+                  <Sparkles size={14} /> Hızlı İşlem
                 </p>
-                <h2>Yeni Akıllı Link Kısalt</h2>
+                <h2>Yeni Link Kısalt</h2>
               </div>
               <button
                 className="close-button"
                 onClick={() => {
                   setShowModal(false);
                   setCreatedLink(null);
+                  setLinkError("");
                 }}
               >
                 <X size={18} />
@@ -1145,10 +1151,8 @@ function App() {
             {createdLink ? (
               <div className="created-link-result">
                 <div className="created-link-check">✓</div>
-                <h3>Kısa Linkiniz Başarıyla Hazır!</h3>
-                <p>
-                  Panonuza kopyalandı, test etmek için hemen tıklayabilirsiniz:
-                </p>
+                <h3>Kısa Linkiniz Hazır!</h3>
+                <p>Panoya kopyalandı. Hemen test edebilirsiniz:</p>
                 <a
                   className="created-link-url"
                   href={createdLink.shortUrl}
@@ -1161,228 +1165,161 @@ function App() {
                 <div className="created-link-actions">
                   <button
                     className="secondary-button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(createdLink.shortUrl);
-                      triggerToast("Kopyalandı!");
-                    }}
+                    onClick={() => copyToClipboard(createdLink.shortUrl)}
                   >
                     <Copy size={15} /> Tekrar Kopyala
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={() => {
-                      setActiveQrLink(createdLink);
-                      setShowModal(false);
-                    }}
-                  >
-                    <QrCode size={15} /> QR Kodu Gör
                   </button>
                   <button
                     className="primary-button"
                     onClick={() => {
                       setCreatedLink(null);
+                      setLinkError("");
                     }}
                   >
-                    <Plus size={15} /> Bir Tane Daha Yap
+                    <Plus size={15} /> Başka Bir Link Kısalt
                   </button>
                 </div>
               </div>
             ) : (
               <>
-                {/* Modal Sekmeleri */}
-                <div className="modal-nav-tabs">
+                <div className="modal-tabs">
                   <button
                     type="button"
-                    className={modalTab === "general" ? "active" : ""}
-                    onClick={() => setModalTab("general")}
+                    className={`modal-tab-btn ${activeTab === "general" ? "active" : ""}`}
+                    onClick={() => setActiveTab("general")}
                   >
                     Genel Ayarlar
                   </button>
                   <button
                     type="button"
-                    className={modalTab === "utm" ? "active" : ""}
-                    onClick={() => setModalTab("utm")}
+                    className={`modal-tab-btn ${activeTab === "utm" ? "active" : ""}`}
+                    onClick={() => setActiveTab("utm")}
                   >
-                    UTM Kampanya Builder
+                    UTM Parametreleri
                   </button>
                   <button
                     type="button"
-                    className={modalTab === "security" ? "active" : ""}
-                    onClick={() => setModalTab("security")}
+                    className={`modal-tab-btn ${activeTab === "security" ? "active" : ""}`}
+                    onClick={() => setActiveTab("security")}
                   >
-                    Hedefleme & Şifreleme
+                    Güvenlik & Bitiş
                   </button>
                 </div>
 
-                <form onSubmit={handleCreateLink}>
-                  {modalTab === "general" && (
-                    <div className="modal-tab-pane">
+                <form onSubmit={createShortLink}>
+                  {activeTab === "general" && (
+                    <>
                       <label>
-                        Hedef URL (Uzun Bağlantı)*
+                        Hedef URL *
                         <input
                           autoFocus
                           required
                           type="text"
-                          placeholder="https://orneksite.com/cok-uzun-ve-karmasik-kampanya-adresi"
-                          value={linkForm.destination}
-                          onChange={(e) =>
-                            setLinkForm({
-                              ...linkForm,
-                              destination: e.target.value,
-                            })
-                          }
+                          value={destinationUrl}
+                          onChange={(e) => setDestinationUrl(e.target.value)}
+                          placeholder="https://siteniz.com/uzun-ve-karmasik-link"
                         />
                       </label>
-
                       <div className="modal-options">
                         <label>
                           Alan Adı
-                          <select defaultValue="go.consolaktif.com.tr">
-                            <option value="go.consolaktif.com.tr">
-                              go.consolaktif.com.tr
-                            </option>
-                            <option
-                              value="link.markaniz.com"
-                              disabled={subscription === "free"}
-                            >
-                              link.markaniz.com{" "}
-                              {subscription === "free" ? "(Pro)" : ""}
-                            </option>
+                          <select disabled>
+                            <option>go.consolaktif.com.tr</option>
                           </select>
                         </label>
                         <label>
                           Özel Slug (Takma İsim)
                           <input
-                            placeholder="ornek: yaz-indirimi"
-                            value={linkForm.slug}
-                            onChange={(e) =>
-                              setLinkForm({ ...linkForm, slug: e.target.value })
-                            }
+                            value={customSlug}
+                            onChange={(e) => setCustomSlug(e.target.value)}
+                            placeholder="ornek: yaz-kampanyasi"
                           />
                         </label>
                       </div>
-
                       <div className="modal-options">
                         <label>
-                          Bağlantı Başlığı (Opsiyonel)
+                          Bağlantı Başlığı
                           <input
-                            placeholder="Panelde görünecek açıklayıcı isim"
-                            value={linkForm.title}
-                            onChange={(e) =>
-                              setLinkForm({
-                                ...linkForm,
-                                title: e.target.value,
-                              })
-                            }
+                            value={linkTitle}
+                            onChange={(e) => setLinkTitle(e.target.value)}
+                            placeholder="Panelde görünecek isim"
                           />
                         </label>
                         <label>
                           Etiket (Tag)
                           <input
-                            placeholder="Örn: Satış, Sosyal Medya, Ads"
-                            value={linkForm.tag}
-                            onChange={(e) =>
-                              setLinkForm({ ...linkForm, tag: e.target.value })
-                            }
+                            value={linkTag}
+                            onChange={(e) => setLinkTag(e.target.value)}
+                            placeholder="Pazarlama, Kampanya vb."
                           />
                         </label>
                       </div>
-                    </div>
+                    </>
                   )}
 
-                  {modalTab === "utm" && (
-                    <div className="modal-tab-pane">
-                      <p className="tab-info-note">
-                        Google Analytics veya Meta reklamlarında tıklamaları
-                        ayrıştırmak için kampanya parametreleri tanımlayın.
+                  {activeTab === "utm" && (
+                    <>
+                      <p className="tab-desc-note">
+                        Google Analytics veya Meta için tıklama kaynaklarını
+                        etiketleyin.
                       </p>
                       <div className="modal-options">
                         <label>
                           UTM Source
                           <input
-                            placeholder="Örn: instagram, newsletter, google"
-                            value={linkForm.utmSource}
-                            onChange={(e) =>
-                              setLinkForm({
-                                ...linkForm,
-                                utmSource: e.target.value,
-                              })
-                            }
+                            value={utmSource}
+                            onChange={(e) => setUtmSource(e.target.value)}
+                            placeholder="instagram, newsletter, google"
                           />
                         </label>
                         <label>
                           UTM Medium
                           <input
-                            placeholder="Örn: cpc, banner, bio, story"
-                            value={linkForm.utmMedium}
-                            onChange={(e) =>
-                              setLinkForm({
-                                ...linkForm,
-                                utmMedium: e.target.value,
-                              })
-                            }
+                            value={utmMedium}
+                            onChange={(e) => setUtmMedium(e.target.value)}
+                            placeholder="cpc, story, email"
                           />
                         </label>
                       </div>
                       <label>
                         UTM Campaign
                         <input
-                          placeholder="Örn: kasim-indirimi-2026"
-                          value={linkForm.utmCampaign}
-                          onChange={(e) =>
-                            setLinkForm({
-                              ...linkForm,
-                              utmCampaign: e.target.value,
-                            })
-                          }
+                          value={utmCampaign}
+                          onChange={(e) => setUtmCampaign(e.target.value)}
+                          placeholder="kasim-indirimleri"
                         />
                       </label>
-                    </div>
+                    </>
                   )}
 
-                  {modalTab === "security" && (
-                    <div className="modal-tab-pane">
-                      {subscription === "free" && (
-                        <div
-                          className="pro-lock-banner"
-                          onClick={() => setShowPricingModal(true)}
-                        >
-                          <Zap size={16} /> Şifre ve Bitiş Süresi Özellikleri{" "}
-                          <strong>Pro Pakette</strong> Geçerlidir.
-                        </div>
-                      )}
+                  {activeTab === "security" && (
+                    <>
+                      <p className="tab-desc-note">
+                        Şifre ve son kullanma tarihi özellikleri Pro ve
+                        Enterprise paketlerde desteklenir.
+                      </p>
                       <div className="modal-options">
                         <label>
                           Şifre Koruması
                           <input
                             type="password"
-                            placeholder="Tıklayanların girmesi gereken şifre"
-                            disabled={subscription === "free"}
-                            value={linkForm.password}
-                            onChange={(e) =>
-                              setLinkForm({
-                                ...linkForm,
-                                password: e.target.value,
-                              })
-                            }
+                            disabled={currentTier === "free"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Şifre belirleyin"
                           />
                         </label>
                         <label>
-                          Son Kullanma Tarihi
+                          Bitiş Tarihi
                           <input
                             type="date"
-                            disabled={subscription === "free"}
-                            value={linkForm.expiresAt}
-                            onChange={(e) =>
-                              setLinkForm({
-                                ...linkForm,
-                                expiresAt: e.target.value,
-                              })
-                            }
+                            disabled={currentTier === "free"}
+                            value={expiresAt}
+                            onChange={(e) => setExpiresAt(e.target.value)}
                           />
                         </label>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {linkError && <p className="auth-error">{linkError}</p>}
@@ -1391,57 +1328,55 @@ function App() {
                     className="primary-button modal-submit"
                     disabled={linkBusy}
                   >
-                    <Link2 size={16} />{" "}
-                    {linkBusy ? "Oluşturuluyor..." : "Kısa Linki Tamamla"}
+                    <Link2 size={17} />{" "}
+                    {linkBusy ? "Oluşturuluyor..." : "Kısa Link Oluştur"}
                   </button>
                 </form>
               </>
             )}
+
+            <div className="modal-note">
+              <ShieldCheck size={15} /> Bağlantınız kurumsal düzeyde analitik
+              altyapısı ile korunmaktadır.
+            </div>
           </div>
         </div>
       )}
 
-      {/* QR KOD ÖZELLEŞTİRME MODALI */}
-      {activeQrLink && (
-        <div className="modal-backdrop" onClick={() => setActiveQrLink(null)}>
+      {/* QR MODAL */}
+      {qrModalLink && (
+        <div className="modal-backdrop" onClick={() => setQrModalLink(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-heading">
               <div>
                 <p className="kicker">
-                  <QrCode size={14} /> Vektörel QR Stüdyosu
+                  <QrCode size={14} /> Vektörel QR
                 </p>
-                <h2>{activeQrLink.title}</h2>
+                <h2>{qrModalLink.title || qrModalLink.slug}</h2>
               </div>
               <button
                 className="close-button"
-                onClick={() => setActiveQrLink(null)}
+                onClick={() => setQrModalLink(null)}
               >
                 <X size={18} />
               </button>
             </div>
             <div className="qr-modal-body">
-              <div className="qr-large-preview">
-                <MockQrSVG value={activeQrLink.shortUrl} size={200} />
+              <div className="qr-canvas-holder">
+                <MockQrSvg value={getShortUrl(qrModalLink)} size={180} />
               </div>
-              <p className="qr-link-caption">{activeQrLink.shortUrl}</p>
-              <div className="qr-download-buttons">
+              <p style={{ fontSize: "11px", color: "#8a96a7" }}>
+                {getShortUrl(qrModalLink)}
+              </p>
+              <div className="qr-actions-row">
                 <button
                   className="primary-button"
                   onClick={() => {
-                    triggerToast(
-                      "PNG formatında yüksek çözünürlüklü QR indirildi.",
-                    );
+                    copyToClipboard(getShortUrl(qrModalLink));
+                    alert("QR bağlantısı panoya kopyalandı.");
                   }}
                 >
-                  <Download size={15} /> PNG Olarak İndir
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    triggerToast("Vektörel SVG QR indirildi.");
-                  }}
-                >
-                  SVG Olarak Al
+                  <Download size={15} /> QR İndir / Paylaş
                 </button>
               </div>
             </div>
@@ -1449,75 +1384,76 @@ function App() {
         </div>
       )}
 
-      {/* HIZLI PAKET YÜKSELTME MODALI (UPGRADE MODAL) */}
-      {showPricingModal && (
+      {/* YÜKSELTME (UPGRADE) MODALI */}
+      {showUpgradeModal && (
         <div
           className="modal-backdrop"
-          onClick={() => setShowPricingModal(false)}
+          onClick={() => setShowUpgradeModal(false)}
         >
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal modal-large"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-heading">
               <div>
                 <p className="kicker">
                   <Zap size={14} /> Sınırları Kaldırın
                 </p>
-                <h2>Growth Pro Planına Yükseltin</h2>
+                <h2>Growth Pro Paketine Yükseltin</h2>
                 <p>
-                  Daha fazla link, özel domainler ve şifreli bağlantı
-                  özellikleri kazanın.
+                  Şifreli linkler, özel domainler ve 100,000 tıklama
+                  kapasitesine erişin.
                 </p>
               </div>
               <button
                 className="close-button"
-                onClick={() => setShowPricingModal(false)}
+                onClick={() => setShowUpgradeModal(false)}
               >
                 <X size={18} />
               </button>
             </div>
-
-            <div className="quick-upgrade-content">
-              <div className="upgrade-perks">
+            <div style={{ padding: "10px 0" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                  marginBottom: "20px",
+                  fontSize: "13px",
+                }}
+              >
                 <div>
-                  ✓ <strong>2,500 Aktif Link</strong> oluşturma hakkı
+                  ✓ <strong>1,500 Adet</strong> Kısa Link Üretimi
                 </div>
                 <div>
-                  ✓ <strong>Özel Markalı Domain</strong> (link.sirketiniz.com)
+                  ✓ <strong>Özel Markalı Alan Adı</strong> (go.sirketiniz.com)
                 </div>
                 <div>
-                  ✓ <strong>Şifreli Bağlantılar</strong> & Süreli Linkler
+                  ✓ <strong>Şifreli ve Süreli</strong> Linkler
                 </div>
                 <div>
-                  ✓ <strong>Detaylı Ülke ve UTM Analitiği</strong>
+                  ✓ <strong>Detaylı UTM ve Kitle</strong> İstatistikleri
                 </div>
               </div>
-
-              <div className="checkout-action-box">
-                <div className="checkout-price">
-                  <span>Yıllık faturalandırmada sadece</span>
-                  <strong>
-                    $15 <em>/ ay</em>
-                  </strong>
-                </div>
-                <button
-                  className="primary-button"
-                  onClick={() => {
-                    setSubscription("pro");
-                    setShowPricingModal(false);
-                    triggerToast("Tebrikler! Pro paketiniz aktif edildi.");
-                  }}
-                >
-                  Hemen Pro'ya Geçin
-                </button>
-              </div>
+              <button
+                className="primary-button"
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={() => {
+                  setCurrentTier("pro");
+                  setShowUpgradeModal(false);
+                  alert("Pro plan aktif edildi!");
+                }}
+              >
+                Aylık $19 İle Hemen Başla
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bildirim Toast'u */}
-      {toastMessage && (
+      {/* BİLDİRİM (TOAST) */}
+      {copied && (
         <div className="toast">
-          <Check size={16} /> {toastMessage}
+          <Copy size={15} /> Link panoya kopyalandı
         </div>
       )}
     </div>
@@ -1525,11 +1461,12 @@ function App() {
 }
 
 // LİNKLER TABLOSU BİLEŞENİ
-function LinksTable({ links, onDelete, onToggleStatus, onOpenQr, onCopy }) {
+function LinksTable({ links, onCopy, onOpenQr }) {
   if (!links.length) {
     return (
       <div className="table-empty">
-        Arama kriterinize uygun veya oluşturulmuş link bulunamadı.
+        Henüz bir link bulunmuyor. Yukarıdaki butonu kullanarak ilk kısa
+        linkinizi oluşturun.
       </div>
     );
   }
@@ -1540,102 +1477,96 @@ function LinksTable({ links, onDelete, onToggleStatus, onOpenQr, onCopy }) {
         <thead>
           <tr>
             <th>Bağlantı & Başlık</th>
-            <th>Tıklama</th>
+            <th>Tıklamalar</th>
             <th>Durum</th>
-            <th>Özellikler</th>
-            <th>Oluşturulma</th>
-            <th style={{ textAlign: "right" }}>İşlemler</th>
+            <th>Etiketler & Korumalar</th>
+            <th>Tarih</th>
+            <th />
           </tr>
         </thead>
         <tbody>
-          {links.map((link) => (
-            <tr key={link.id}>
-              <td>
-                <div className="link-cell">
-                  <button
-                    className="qr-icon-btn"
-                    title="QR Kodu Göster"
-                    onClick={() => onOpenQr(link)}
-                  >
-                    <QrCode size={16} />
-                  </button>
-                  <div style={{ minWidth: 0 }}>
-                    <strong>{link.title}</strong>
-                    <div className="link-url-row">
-                      <a href={link.shortUrl} target="_blank" rel="noreferrer">
-                        {link.shortUrl}
-                      </a>
-                      <button
-                        className="tiny-copy-btn"
-                        onClick={() => onCopy(link.shortUrl)}
-                        title="Panoya Kopyala"
-                      >
-                        <Copy size={12} />
-                      </button>
-                    </div>
-                    <span
-                      className="destination-preview"
-                      title={link.destination}
+          {links.map((link) => {
+            const shortUrl = getShortUrl(link);
+            return (
+              <tr key={link.id || link.slug}>
+                <td>
+                  <div className="link-cell">
+                    <button
+                      className="tiny-btn"
+                      onClick={() => onOpenQr(link)}
+                      title="QR Kodu Göster"
+                      style={{ padding: "6px" }}
                     >
-                      → {link.destination}
-                    </span>
+                      <QrCode size={16} />
+                    </button>
+                    <div>
+                      <strong>{link.title || link.slug}</strong>
+                      <div className="link-url-row">
+                        <a href={shortUrl} target="_blank" rel="noreferrer">
+                          {shortUrl}
+                        </a>
+                        <button
+                          className="tiny-btn"
+                          onClick={() => onCopy(shortUrl)}
+                          title="Kopyala"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                      <span
+                        className="destination-text"
+                        title={link.destination}
+                      >
+                        → {link.destination}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="number-cell">
-                <span className="click-counter">
+                </td>
+                <td className="number-cell">
                   {Number(link.clickCount || 0).toLocaleString()}
-                </span>
-              </td>
-              <td>
-                <button
-                  className={`status-pill ${link.status}`}
-                  onClick={() => onToggleStatus(link.id)}
-                  title="Durumu değiştirmek için tıkla"
-                >
-                  <i /> {link.status === "active" ? "Aktif" : "Duraklatıldı"}
-                </button>
-              </td>
-              <td>
-                <div className="link-perks-icons">
-                  {link.password && (
-                    <span title="Şifre Korumalı">
-                      <Lock size={13} />
-                    </span>
-                  )}
-                  {link.expiresAt && (
-                    <span title="Süreli Link">
-                      <Clock size={13} />
-                    </span>
-                  )}
-                  {link.tags?.map((t, idx) => (
-                    <span key={idx} className="link-tag-bubble">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="date-cell">
-                {new Date(link.createdAt).toLocaleDateString("tr-TR")}
-              </td>
-              <td style={{ textAlign: "right" }}>
-                <button
-                  className="row-delete-btn"
-                  onClick={() => onDelete(link.id)}
-                  title="Linki Sil"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td>
+                  <span
+                    className={`status-pill ${link.status === "paused" ? "paused" : "active"}`}
+                  >
+                    <i /> {link.status === "paused" ? "Duraklatıldı" : "Aktif"}
+                  </span>
+                </td>
+                <td>
+                  <div className="link-tags-group">
+                    {link.password && (
+                      <span
+                        className="tag-badge secured"
+                        title="Şifre Korumalı"
+                      >
+                        <Lock size={10} /> Şifreli
+                      </span>
+                    )}
+                    {link.tag && <span className="tag-badge">{link.tag}</span>}
+                  </div>
+                </td>
+                <td className="date-cell">
+                  {link.createdAt?.seconds
+                    ? new Date(
+                        link.createdAt.seconds * 1000,
+                      ).toLocaleDateString("tr-TR")
+                    : "Yeni"}
+                </td>
+                <td>
+                  <button className="row-menu" onClick={() => onOpenQr(link)}>
+                    <MoreHorizontal size={17} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-// İSTATİSTİK KARTI
+// STAT CARD
 function StatCard({ label, value, change, trend, icon: Icon, note }) {
   return (
     <div className="stat-card">
@@ -1657,18 +1588,32 @@ function StatCard({ label, value, change, trend, icon: Icon, note }) {
   );
 }
 
-// BASİT SVG QR KOD ÜRETİCİSİ (Harici Kütüphane Bağımlılığı Olmadan Çalışır)
-function MockQrSVG({ value, size = 120 }) {
-  // Gerçek QR görünümü hissi veren vektörel desen
+// EMPTY STATE
+function EmptyState({ icon: Icon, title, body, action, onClick }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-icon">
+        <Icon size={22} />
+      </div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+      <button className="primary-button" onClick={onClick}>
+        {action} <ArrowUpRight size={15} />
+      </button>
+    </div>
+  );
+}
+
+// VEKTÖREL QR SVG (Paket Bağımlılığı Olmadan Çalışır)
+function MockQrSvg({ value, size = 120 }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 100 100"
       fill="#2168f3"
-      style={{ background: "#fff", padding: "8px", borderRadius: "8px" }}
+      style={{ background: "#fff", padding: "6px", borderRadius: "8px" }}
     >
-      {/* Köşe Pozisyon Kareleri */}
       <rect x="5" y="5" width="25" height="25" fill="currentColor" rx="4" />
       <rect x="9" y="9" width="17" height="17" fill="#fff" rx="2" />
       <rect x="13" y="13" width="9" height="9" fill="currentColor" />
@@ -1681,7 +1626,6 @@ function MockQrSVG({ value, size = 120 }) {
       <rect x="9" y="74" width="17" height="17" fill="#fff" rx="2" />
       <rect x="13" y="78" width="9" height="9" fill="currentColor" />
 
-      {/* Rastgele Görünümlü Veri Blokları */}
       <rect x="36" y="10" width="6" height="6" />
       <rect x="48" y="14" width="8" height="6" />
       <rect x="36" y="24" width="18" height="6" />
@@ -1699,23 +1643,63 @@ function MockQrSVG({ value, size = 120 }) {
   );
 }
 
-// GİRİŞ & KAYIT EKRANI
-function AuthScreen() {
+function getShortUrl(link) {
+  return link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`;
+}
+
+function pageDescription(page) {
+  const descriptions = {
+    Links: "Çalışma alanınızdaki tüm bağlantıları inceleyin ve filtreleyin.",
+    Analytics: "Tıklama ve yönlendirme kaynaklarını ölçümleyin.",
+    Domains:
+      "Kısa linkleriniz için markanıza ait özel alan adlarını yapılandırın.",
+    Billing: "Abonelik planınızı ve kullanım kotalarınızı buradan yönetin.",
+    Integrations: "REST API üzerinden dış sistemlerle entegrasyon kurun.",
+    Settings: "Kullanıcı tercihleri ve güvenlik ayarları.",
+  };
+  return descriptions[page] || "Çalışma alanı detayları";
+}
+
+// GİRİŞ EKRANI (FIREBASE)
+function AuthScreen({ configured }) {
   const [mode, setMode] = useState("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
+  const handleEmailAuth = async (event) => {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
     try {
       if (mode === "sign-in") {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-    } catch (err) {
-      setError(err.message || "Giriş yapılamadı");
+    } catch (authError) {
+      setError(
+        authError.code?.replace("auth/", "").replaceAll("-", " ") ||
+          "Giriş yapılamadı",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (authError) {
+      setError(
+        authError.code?.replace("auth/", "").replaceAll("-", " ") ||
+          "Google girişi iptal edildi",
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -1734,70 +1718,117 @@ function AuthScreen() {
         </div>
         <div className="auth-quote">
           <span>“</span>
-          <h1>Her paylaşımı kârlı bir tıklamaya dönüştürün.</h1>
+          <h1>
+            Her tıklamayı
+            <br />
+            anlamlı kılın.
+          </h1>
           <p>
-            Yüksek hacimli bağlantılar, anlık analitikler ve kurumsal alan adı
-            entegrasyonu.
+            Trafik yönlendirmelerini, kitleleri ve dönüşümleri takip eden
+            kurumsal link yönetim platformu.
           </p>
+          <div className="auth-stat">
+            <strong>2.4B+</strong>
+            <span>bağlantı başarıyla yönlendirildi</span>
+          </div>
         </div>
       </div>
 
       <section className="auth-card">
-        <div className="auth-heading">
-          <h2>
-            {mode === "sign-in"
-              ? "Çalışma Alanına Giriş Yap"
-              : "Yeni Hesap Oluştur"}
-          </h2>
-          <p>Linklerinizi tek bir çatı altından güvenle yönetin.</p>
+        <div className="auth-mobile-brand">
+          <div className="brand-mark">
+            <Link2 size={18} />
+          </div>
+          <strong>
+            Long Story <span>Short</span>
+          </strong>
         </div>
-        <button
-          className="google-button"
-          onClick={() => signInWithPopup(auth, googleProvider)}
-        >
-          <span className="google-g">G</span> Google ile Hızlı Devam Et
-        </button>
-        <div className="auth-divider">
-          <span>veya e-posta ile</span>
-        </div>
-        <form onSubmit={handleEmailAuth}>
-          <label>
-            E-posta Adresi
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ad@sirketiniz.com"
-            />
-          </label>
-          <label>
-            Şifre
-            <input
-              required
-              type="password"
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          {error && <p className="auth-error">{error}</p>}
-          <button className="primary-button auth-submit">
-            {mode === "sign-in" ? "Giriş Yap" : "Hesap Aç"}
-          </button>
-        </form>
-        <p className="auth-switch">
-          {mode === "sign-in" ? "Hesabınız yok mu?" : "Zaten üye misiniz?"}{" "}
-          <button
-            onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
-          >
-            {mode === "sign-in" ? "Hemen Kaydol" : "Giriş Yap"}
-          </button>
-        </p>
+
+        {!configured ? (
+          <div className="setup-state">
+            <div className="setup-icon">
+              <Settings2 size={24} />
+            </div>
+            <h2>Firebase Bağlantısı Gerekli</h2>
+            <p>
+              <strong>.env.example</strong> dosyasını{" "}
+              <strong>.env.local</strong> olarak kopyalayın ve Firebase Web App
+              anahtarlarınızı girin.
+            </p>
+            <code>cp .env.example .env.local</code>
+          </div>
+        ) : (
+          <>
+            <div className="auth-heading">
+              <p className="kicker">
+                <Sparkles size={14} /> Hoş Geldiniz
+              </p>
+              <h2>
+                {mode === "sign-in"
+                  ? "Çalışma Alanına Giriş Yapın"
+                  : "Yeni Hesap Oluşturun"}
+              </h2>
+              <p>Tüm kısa linklerinizi tek panelden profesyonelce yönetin.</p>
+            </div>
+            <button
+              className="google-button"
+              onClick={handleGoogleAuth}
+              disabled={busy}
+            >
+              <span className="google-g">G</span>
+              {busy ? "Bağlanıyor..." : "Google ile Devam Et"}
+            </button>
+            <div className="auth-divider">
+              <span>veya e-posta ile</span>
+            </div>
+            <form onSubmit={handleEmailAuth}>
+              <label>
+                E-posta adresi
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="siz@sirket.com"
+                />
+              </label>
+              <label>
+                Şifre
+                <input
+                  type="password"
+                  required
+                  minLength="6"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="En az 6 karakter"
+                />
+              </label>
+              {error && <p className="auth-error">{error}</p>}
+              <button className="primary-button auth-submit" disabled={busy}>
+                {mode === "sign-in" ? "Giriş Yap" : "Hesap Aç"}
+                <ArrowUpRight size={16} />
+              </button>
+            </form>
+            <p className="auth-switch">
+              {mode === "sign-in"
+                ? "Hesabınız yok mu?"
+                : "Zaten hesabınız var mı?"}{" "}
+              <button
+                onClick={() => {
+                  setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+                  setError("");
+                }}
+              >
+                {mode === "sign-in" ? "Hesap Oluştur" : "Giriş Yap"}
+              </button>
+            </p>
+          </>
+        )}
       </section>
     </main>
   );
 }
 
 export default App;
+
 createRoot(document.getElementById("root")).render(<App />);
