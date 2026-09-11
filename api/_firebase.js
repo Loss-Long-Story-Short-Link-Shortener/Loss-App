@@ -6,12 +6,17 @@ const requiredEnv = ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL"];
 
 function getPrivateKey() {
   if (process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim()) {
-    return Buffer.from(process.env.FIREBASE_PRIVATE_KEY_BASE64.trim(), "base64")
-      .toString("utf8")
-      .trim();
+    const encoded = process.env.FIREBASE_PRIVATE_KEY_BASE64.trim().replace(
+      /^"|"$/g,
+      "",
+    );
+    return Buffer.from(encoded, "base64").toString("utf8").trim();
   }
 
-  return (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim();
+  return (process.env.FIREBASE_PRIVATE_KEY || "")
+    .replace(/^"|"$/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
 }
 
 export function getFirebaseAdmin() {
