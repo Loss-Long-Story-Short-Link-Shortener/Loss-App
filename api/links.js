@@ -21,17 +21,6 @@ function normalizeSlug(value) {
     .slice(0, 48);
 }
 
-function getShortHost(request) {
-  return (
-    request.headers["x-forwarded-host"] ||
-    request.headers.host ||
-    "go.consolaktif.com.tr"
-  )
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
-}
-
 export default async function handler(request, response) {
   allowCors(response);
   if (request.method === "OPTIONS") return response.status(204).end();
@@ -41,7 +30,9 @@ export default async function handler(request, response) {
   try {
     const user = await requireUser(request);
     const { db } = getFirebaseAdmin();
-    const host = getShortHost(request);
+    const host = (process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr")
+      .trim()
+      .toLowerCase();
 
     if (request.method === "GET") {
       const snapshot = await db
@@ -98,11 +89,16 @@ export default async function handler(request, response) {
       updatedAt: FieldValue.serverTimestamp(),
     };
     await linkRef.set(link);
+    const savedLink = await linkRef.get();
 
     const baseUrl =
       process.env.SHORT_LINK_BASE_URL || "https://go.consolaktif.com.tr";
     return sendJson(response, 201, {
-      link: { id, ...link, shortUrl: `${baseUrl}/${slug}` },
+      link: {
+        id,
+        ...savedLink.data(),
+        shortUrl: `${baseUrl}/${slug}`,
+      },
     });
   } catch (error) {
     console.error(error);

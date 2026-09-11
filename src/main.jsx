@@ -105,9 +105,9 @@ function App() {
     event.preventDefault();
     setLinkError("");
     setLinkBusy(true);
+    const form = new FormData(event.currentTarget);
     try {
       const token = await user.getIdToken();
-      const form = new FormData(event.currentTarget);
       const result = await fetch(
         `${import.meta.env.VITE_SHORTENER_API_URL || ""}/api/links`,
         {
