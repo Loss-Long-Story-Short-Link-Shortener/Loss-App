@@ -42,6 +42,26 @@ import {
 } from "./firebase";
 import "./styles.css";
 
+const apiBaseUrl = (import.meta.env.VITE_SHORTENER_API_URL || "")
+  .trim()
+  .replace(/\/$/, "");
+
+async function readApiResponse(response) {
+  const rawBody = await response.text();
+  let data;
+  try {
+    data = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    throw new Error(
+      `API error (${response.status}): ${rawBody.slice(0, 160) || "Empty response"}`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(data.error || `API error (${response.status})`);
+  }
+  return data;
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -87,12 +107,10 @@ function App() {
     const loadLinks = async () => {
       try {
         const token = await user.getIdToken();
-        const apiUrl = import.meta.env.VITE_SHORTENER_API_URL || "";
-        const result = await fetch(`${apiUrl}/api/links`, {
+        const result = await fetch(`${apiBaseUrl}/api/links`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!result.ok) return;
-        const data = await result.json();
+        const data = await readApiResponse(result);
         setLinks(data.links || []);
       } catch (error) {
         console.error("Unable to load links", error);
@@ -108,22 +126,18 @@ function App() {
     const form = new FormData(event.currentTarget);
     try {
       const token = await user.getIdToken();
-      const result = await fetch(
-        `${import.meta.env.VITE_SHORTENER_API_URL || ""}/api/links`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            destination: form.get("destination"),
-            slug: form.get("slug"),
-          }),
+      const result = await fetch(`${apiBaseUrl}/api/links`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      );
-      const data = await result.json();
-      if (!result.ok) throw new Error(data.error || "Unable to create link");
+        body: JSON.stringify({
+          destination: form.get("destination"),
+          slug: form.get("slug"),
+        }),
+      });
+      const data = await readApiResponse(result);
       setLinks((current) => [data.link, ...current]);
       await navigator.clipboard?.writeText(data.link.shortUrl);
       setCopied(true);
