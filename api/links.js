@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import {
   allowCors,
   getFirebaseAdmin,
+  handleApiError,
   requireUser,
   sendJson,
 } from "./_firebase.js";
@@ -101,11 +102,6 @@ export default async function handler(request, response) {
       },
     });
   } catch (error) {
-    console.error(error);
-    return sendJson(response, error.statusCode || 500, {
-      error: error.statusCode
-        ? error.message
-        : "Unable to process link request",
-    });
+    return handleApiError(response, error);
   }
 }
