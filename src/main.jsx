@@ -341,6 +341,7 @@ function App() {
                 {activePage === "Overview" ? (
                   <>
                     Good morning, {user.displayName?.split(" ")[0] || "there"}{" "}
+                    target="_blank" rel="noreferrer"
                     <span>✦</span>
                   </>
                 ) : (
@@ -556,11 +557,7 @@ function App() {
                               </span>
                               <div>
                                 <strong>{displayLink.title}</strong>
-                                <a
-                                  href={getShortUrl(link)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
+                                <a href={getShortUrl(link)}>
                                   {getShortUrl(link)}
                                 </a>
                               </div>
@@ -650,12 +647,7 @@ function App() {
                   It was copied to your clipboard. You can also open it
                   directly:
                 </p>
-                <a
-                  className="created-link-url"
-                  href={createdLink.shortUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a className="created-link-url" href={createdLink.shortUrl}>
                   {createdLink.shortUrl}
                   <ExternalLink size={16} />
                 </a>
