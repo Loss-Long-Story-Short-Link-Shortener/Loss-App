@@ -21,6 +21,7 @@ import {
   LayoutDashboard,
   Link2,
   ListFilter,
+  LogOut,
   MoreHorizontal,
   MousePointerClick,
   Plus,
@@ -54,6 +55,7 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const totalClicks = links.reduce(
     (total, link) => total + Number(link.clickCount || 0),
     0,
@@ -227,11 +229,17 @@ function App() {
               Manage plan <ArrowUpRight size={13} />
             </button>
           </div>
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activePage === "Settings" ? "selected" : ""}`}
+            onClick={() => setActivePage("Settings")}
+          >
             <Settings2 size={18} />
             <span>Settings</span>
           </button>
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activePage === "Help center" ? "selected" : ""}`}
+            onClick={() => setActivePage("Help center")}
+          >
             <CircleHelp size={18} />
             <span>Help center</span>
           </button>
@@ -274,28 +282,60 @@ function App() {
             >
               {theme === "dark" ? "☀" : "☾"}
             </button>
-            <button
-              className="avatar-small"
-              onClick={() => signOut(auth)}
-              title="Sign out"
-            >
-              {(user.displayName || user.email || "U")
-                .slice(0, 2)
-                .toUpperCase()}
-            </button>
+            <div className="profile-menu-wrap">
+              <button
+                className="avatar-small"
+                onClick={() => setShowProfileMenu((current) => !current)}
+                aria-expanded={showProfileMenu}
+                aria-label="Open profile menu"
+              >
+                {(user.displayName || user.email || "U")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </button>
+              {showProfileMenu && (
+                <div className="profile-menu">
+                  <div className="profile-menu-user">
+                    <strong>{user.displayName || "Signed-in user"}</strong>
+                    <span>{user.email}</span>
+                  </div>
+                  <button onClick={() => setActivePage("Settings")}>
+                    <Settings2 size={15} /> Account settings
+                  </button>
+                  <button
+                    className="logout-action"
+                    onClick={() => signOut(auth)}
+                  >
+                    <LogOut size={15} /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <div className="content-wrap">
           <div className="page-heading">
             <div>
               <p className="kicker">
-                <Activity size={14} /> Workspace overview
+                <Activity size={14} />{" "}
+                {activePage === "Overview"
+                  ? "Workspace overview"
+                  : `${activePage} workspace`}
               </p>
               <h1>
-                Good morning, Marcus <span>✦</span>
+                {activePage === "Overview" ? (
+                  <>
+                    Good morning, {user.displayName?.split(" ")[0] || "there"}{" "}
+                    <span>✦</span>
+                  </>
+                ) : (
+                  activePage
+                )}
               </h1>
               <p className="subheading">
-                Here is what is happening with your links today.
+                {activePage === "Overview"
+                  ? "Here is what is happening with your links today."
+                  : pageDescription(activePage)}
               </p>
             </div>
             <button
@@ -306,7 +346,19 @@ function App() {
             </button>
           </div>
 
-          <section className="stats-grid">
+          {activePage !== "Overview" && (
+            <WorkspacePage
+              page={activePage}
+              links={links}
+              totalClicks={totalClicks}
+              onCreate={() => setShowModal(true)}
+              onNavigate={setActivePage}
+            />
+          )}
+
+          <section
+            className={`stats-grid ${activePage !== "Overview" ? "view-hidden" : ""}`}
+          >
             <StatCard
               label="Total clicks"
               value={totalClicks.toLocaleString()}
@@ -341,7 +393,9 @@ function App() {
             />
           </section>
 
-          <section className="dashboard-grid">
+          <section
+            className={`dashboard-grid ${activePage !== "Overview" ? "view-hidden" : ""}`}
+          >
             <div className="panel analytics-panel">
               <div className="panel-header">
                 <div>
@@ -436,7 +490,9 @@ function App() {
             </div>
           </section>
 
-          <section className="panel links-panel">
+          <section
+            className={`panel links-panel ${activePage !== "Overview" ? "view-hidden" : ""}`}
+          >
             <div className="panel-header links-header">
               <div>
                 <h2>Recent links</h2>
@@ -806,6 +862,174 @@ function presentLink(link) {
     date: createdAt,
     color: "blue",
   };
+}
+
+function pageDescription(page) {
+  const descriptions = {
+    Links: "Create, inspect, and manage the links in your workspace.",
+    Analytics: "Understand clicks and attribution from your shared links.",
+    Audiences: "Audience profiles will appear as click events collect context.",
+    Domains: "Configure the domain used by your short links.",
+    Tags: "Organize links with tags when your first links are created.",
+    Integrations: "Connect services to automate link creation and reporting.",
+    Billing: "Your plan and usage information will appear here.",
+    Settings: "Manage account and workspace preferences.",
+    "Help center":
+      "Find setup guidance for authentication, links, and analytics.",
+  };
+  return descriptions[page] || "Workspace details";
+}
+
+function WorkspacePage({ page, links, totalClicks, onCreate, onNavigate }) {
+  if (page === "Links") {
+    return (
+      <section className="workspace-page">
+        <div className="subpage-toolbar">
+          <div>
+            <h2>All links</h2>
+            <p>
+              {links.length
+                ? `${links.length} link${links.length === 1 ? "" : "s"} in this workspace.`
+                : "Your link collection is empty."}
+            </p>
+          </div>
+          <button className="primary-button" onClick={onCreate}>
+            <Plus size={17} /> Shorten a link
+          </button>
+        </div>
+        {links.length ? (
+          <div className="link-list">
+            {links.map((link) => (
+              <div className="link-list-row" key={link.id || link.slug}>
+                <div className="link-icon blue">
+                  <Link2 size={16} />
+                </div>
+                <div>
+                  <strong>{link.slug}</strong>
+                  <span>{link.destination}</span>
+                </div>
+                <b>{link.clickCount || 0} clicks</b>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Link2}
+            title="No links yet"
+            body="Create your first short link and it will appear here."
+            action="Shorten a link"
+            onClick={onCreate}
+          />
+        )}
+      </section>
+    );
+  }
+  if (page === "Analytics") {
+    return (
+      <section className="workspace-page">
+        <div className="subpage-toolbar">
+          <div>
+            <h2>Analytics report</h2>
+            <p>Only recorded Firestore click events are shown.</p>
+          </div>
+          <span className="data-badge">
+            {totalClicks.toLocaleString()} total clicks
+          </span>
+        </div>
+        <EmptyState
+          icon={BarChart3}
+          title={
+            totalClicks ? "Detailed analytics are next" : "No analytics yet"
+          }
+          body={
+            totalClicks
+              ? "Time-series and referrer aggregation will appear here when event reporting is connected."
+              : "Share a link to start collecting real click events."
+          }
+          action={links.length ? "View links" : "Create a link"}
+          onClick={() => (links.length ? onNavigate("Links") : onCreate())}
+        />
+      </section>
+    );
+  }
+  if (page === "Domains") {
+    return (
+      <section className="workspace-page">
+        <div className="subpage-toolbar">
+          <div>
+            <h2>Short-link domain</h2>
+            <p>
+              Your current routing domain is defined by the deployed backend.
+            </p>
+          </div>
+        </div>
+        <div className="domain-row">
+          <div className="domain-status">
+            <span className="status-dot" />
+            <div>
+              <strong>go.consolaktif.com.tr</strong>
+              <span>Primary short-link domain</span>
+            </div>
+          </div>
+          <span className="status pending">
+            <i /> Backend connection required
+          </span>
+        </div>
+        <p className="inline-note">
+          The domain becomes usable after the Vercel API and DNS target are
+          deployed.
+        </p>
+      </section>
+    );
+  }
+  const titles = {
+    Audiences: "No audience profiles yet",
+    Tags: "No tags created",
+    Integrations: "No integrations connected",
+    Billing: "Plan data is not connected",
+    Settings: "Account settings",
+    "Help center": "Setup help",
+  };
+  return (
+    <section className="workspace-page">
+      <EmptyState
+        icon={
+          page === "Settings"
+            ? Settings2
+            : page === "Help center"
+              ? CircleHelp
+              : page === "Billing"
+                ? WalletCards
+                : page === "Integrations"
+                  ? Sparkles
+                  : page === "Tags"
+                    ? Tag
+                    : Users
+        }
+        title={titles[page] || "Nothing here yet"}
+        body={pageDescription(page)}
+        action={
+          page === "Help center" ? "Open setup guide" : "Back to overview"
+        }
+        onClick={() => onNavigate("Overview")}
+      />
+    </section>
+  );
+}
+
+function EmptyState({ icon: Icon, title, body, action, onClick }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-icon">
+        <Icon size={22} />
+      </div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+      <button className="primary-button" onClick={onClick}>
+        {action} <ArrowUpRight size={15} />
+      </button>
+    </div>
+  );
 }
 
 function StatCard({ label, value, change, trend, icon: Icon, note }) {
