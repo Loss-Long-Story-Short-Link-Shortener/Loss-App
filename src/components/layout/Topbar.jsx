@@ -3,23 +3,23 @@ import {
   Menu,
   Sun,
   Moon,
-  Sparkles,
-  Bell,
+  LogIn,
+  LogOut,
   CreditCard,
   Key,
-  LogOut,
-  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 export function Topbar({
-  activePage,
   onOpenMobile,
   onOpenCreateModal,
-  onOpenUpgradeModal,
   onSelectPage,
+  sidebarCollapsed = false,
+  onToggleSidebar,
 }) {
-  const { user, isDemo, theme, setTheme, currentTier, signOutUser } = useAuth();
+  const { user, theme, setTheme, requireAuth, signOutUser } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
@@ -33,139 +33,116 @@ export function Topbar({
           <Menu size={18} />
         </button>
 
-        <div className="breadcrumb">
-          <span>Çalışma Alanı</span>
-          <span className="breadcrumb-sep">/</span>
-          <span className="breadcrumb-current">{activePage}</span>
-        </div>
-
-        {isDemo && (
-          <span className="demo-mode-indicator" title="Test ve Önizleme Modu">
-            <span className="status-dot-pulse" style={{ background: "#f59e0b" }} />
-            Demo Modu
-          </span>
-        )}
-      </div>
-
-      <div className="topbar-right">
-        {currentTier === "free" && (
+        {onToggleSidebar && (
           <button
-            className="btn btn-sm"
-            style={{
-              background: "linear-gradient(135deg, #2563eb, #6366f1)",
-              color: "#fff",
-              border: "none",
-            }}
-            onClick={onOpenUpgradeModal}
+            className="topbar-sidebar-toggle-btn"
+            onClick={onToggleSidebar}
+            title={sidebarCollapsed ? "Menüyü Aç" : "Menüyü Kapat"}
+            aria-label={sidebarCollapsed ? "Menüyü Aç" : "Menüyü Kapat"}
           >
-            <Sparkles size={14} /> Planı Yükselt
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         )}
 
+        <div className="chatgpt-topbar-brand">
+          <strong>Loss</strong>
+          <span className="brand-badge-pill">v1.0</span>
+        </div>
+      </div>
+
+      <div className="topbar-right">
         {/* Theme Toggle */}
         <button
           className="icon-btn"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Tema Değiştir"
-          title={theme === "dark" ? "Aydınlık Temaya Geç" : "Koyu Temaya Geç"}
+          title={theme === "dark" ? "Aydınlık Moda Geç" : "Koyu Moda Geç"}
         >
-          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        {/* Profile Dropdown */}
-        <div style={{ position: "relative" }}>
-          <button
-            className="user-avatar-circle"
-            style={{ cursor: "pointer", border: "none" }}
-            onClick={() => setProfileOpen((prev) => !prev)}
-            aria-label="Kullanıcı Menüsü"
-          >
-            {(user?.displayName || user?.email || "U").slice(0, 2).toUpperCase()}
-          </button>
-
-          {profileOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 8px)",
-                right: 0,
-                width: "220px",
-                background: "var(--bg-surface-elevated)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
-                boxShadow: "var(--shadow-lg)",
-                padding: "8px",
-                zIndex: 50,
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-              onMouseLeave={() => setProfileOpen(false)}
+        {/* User profile or Login CTA */}
+        {user ? (
+          <div style={{ position: "relative" }}>
+            <button
+              className="user-avatar-circle"
+              style={{ width: "30px", height: "30px", cursor: "pointer", border: "none" }}
+              onClick={() => setProfileOpen((prev) => !prev)}
             >
+              {(user.displayName || user.email || "U").slice(0, 2).toUpperCase()}
+            </button>
+
+            {profileOpen && (
               <div
                 style={{
-                  padding: "8px",
-                  borderBottom: "1px solid var(--border-subtle)",
-                  marginBottom: "4px",
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  width: "200px",
+                  background: "var(--bg-surface-elevated)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-lg)",
+                  padding: "6px",
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
                 }}
+                onMouseLeave={() => setProfileOpen(false)}
               >
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize: "13px",
-                    color: "var(--text-primary)",
+                <div style={{ padding: "6px 8px 8px", borderBottom: "1px solid var(--border-subtle)", marginBottom: "4px" }}>
+                  <strong style={{ display: "block", fontSize: "12px", color: "var(--text-primary)" }}>
+                    {user.displayName || "Kullanıcı"}
+                  </strong>
+                  <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {user.email}
+                  </span>
+                </div>
+
+                <button
+                  className="btn btn-subtle btn-sm"
+                  style={{ justifyContent: "flex-start" }}
+                  onClick={() => {
+                    onSelectPage("Billing");
+                    setProfileOpen(false);
                   }}
                 >
-                  {user?.displayName || "Yönetici"}
-                </strong>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "11px",
-                    color: "var(--text-muted)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                  <CreditCard size={13} /> Paketler
+                </button>
+
+                <button
+                  className="btn btn-subtle btn-sm"
+                  style={{ justifyContent: "flex-start" }}
+                  onClick={() => {
+                    onSelectPage("Integrations");
+                    setProfileOpen(false);
                   }}
                 >
-                  {user?.email}
-                </span>
+                  <Key size={13} /> API Token
+                </button>
+
+                <button
+                  className="btn btn-subtle btn-sm"
+                  style={{ justifyContent: "flex-start", color: "var(--danger)" }}
+                  onClick={() => {
+                    signOutUser();
+                    setProfileOpen(false);
+                  }}
+                >
+                  <LogOut size={13} /> Çıkış Yap
+                </button>
               </div>
-
-              <button
-                className="btn btn-subtle btn-sm"
-                style={{ justifyContent: "flex-start" }}
-                onClick={() => {
-                  onSelectPage("Billing");
-                  setProfileOpen(false);
-                }}
-              >
-                <CreditCard size={14} /> Abonelik & Paket
-              </button>
-
-              <button
-                className="btn btn-subtle btn-sm"
-                style={{ justifyContent: "flex-start" }}
-                onClick={() => {
-                  onSelectPage("Integrations");
-                  setProfileOpen(false);
-                }}
-              >
-                <Key size={14} /> API & Token
-              </button>
-
-              <button
-                className="btn btn-subtle btn-sm"
-                style={{ justifyContent: "flex-start", color: "var(--danger)" }}
-                onClick={() => {
-                  signOutUser();
-                  setProfileOpen(false);
-                }}
-              >
-                <LogOut size={14} /> Çıkış Yap
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => requireAuth("Bağlantılarınızı buluta kaydetmek için giriş yapın.")}
+          >
+            <LogIn size={13} /> Giriş Yap
+          </button>
+        )}
       </div>
     </header>
   );

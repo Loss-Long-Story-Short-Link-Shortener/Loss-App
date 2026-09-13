@@ -48,11 +48,10 @@ export function QrDetailModal({ isOpen, onClose, link }) {
         <div
           style={{
             background: bgColor,
-            padding: "20px",
+            padding: "22px",
             borderRadius: "var(--radius-md)",
-            border: "1px solid var(--border-subtle)",
-            boxShadow: "var(--shadow-sm)",
-            marginBottom: "16px",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+            marginBottom: "20px",
           }}
         >
           <QrCodeSvg
@@ -69,14 +68,15 @@ export function QrDetailModal({ isOpen, onClose, link }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            background: "var(--bg-surface-subtle)",
-            padding: "8px 14px",
+            gap: "10px",
+            background: "var(--bg-app)",
+            border: "1px solid var(--border-default)",
+            padding: "8px 16px",
             borderRadius: "var(--radius-full)",
             fontSize: "12px",
             fontFamily: "var(--font-mono)",
             color: "var(--primary)",
-            marginBottom: "20px",
+            marginBottom: "24px",
           }}
         >
           <span>{shortUrl}</span>
@@ -98,38 +98,38 @@ export function QrDetailModal({ isOpen, onClose, link }) {
         <div
           style={{
             display: "flex",
-            gap: "16px",
+            gap: "24px",
             width: "100%",
             justifyContent: "center",
-            marginBottom: "24px",
+            marginBottom: "28px",
           }}
         >
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
             <span>Ön Renk:</span>
             <input
               type="color"
               value={fgColor}
               onChange={(e) => setFgColor(e.target.value)}
-              style={{ width: "32px", height: "32px", border: "none", borderRadius: "4px", cursor: "pointer" }}
+              style={{ width: "28px", height: "28px", border: "none", borderRadius: "6px", cursor: "pointer", background: "transparent" }}
             />
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
             <span>Arka Plan:</span>
             <input
               type="color"
               value={bgColor}
               onChange={(e) => setBgColor(e.target.value)}
-              style={{ width: "32px", height: "32px", border: "none", borderRadius: "4px", cursor: "pointer" }}
+              style={{ width: "28px", height: "28px", border: "none", borderRadius: "6px", cursor: "pointer", background: "transparent" }}
             />
           </label>
         </div>
 
         {/* Download buttons */}
-        <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-          <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleDownloadSvg}>
+        <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+          <button className="btn btn-secondary" style={{ flex: 1, padding: "10px" }} onClick={handleDownloadSvg}>
             <Download size={15} /> Vektörel SVG
           </button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleDownloadPng}>
+          <button className="btn btn-primary" style={{ flex: 1, padding: "10px" }} onClick={handleDownloadPng}>
             <Download size={15} /> HD PNG (Baskı)
           </button>
         </div>

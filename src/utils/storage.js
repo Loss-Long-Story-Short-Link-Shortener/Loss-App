@@ -1,5 +1,6 @@
 /**
- * LocalStorage wrapper with fallback
+ * LocalStorage wrapper with safe fallbacks.
+ * Forces dark mode and ensures zero fake links exist.
  */
 
 const STORAGE_KEYS = {
@@ -12,7 +13,7 @@ const STORAGE_KEYS = {
 
 export const storage = {
   getTheme() {
-    return window.localStorage.getItem(STORAGE_KEYS.THEME) || "light";
+    return window.localStorage.getItem(STORAGE_KEYS.THEME) || "dark";
   },
   setTheme(theme) {
     window.localStorage.setItem(STORAGE_KEYS.THEME, theme);
@@ -28,14 +29,29 @@ export const storage = {
   getDemoLinks() {
     try {
       const data = window.localStorage.getItem(STORAGE_KEYS.DEMO_LINKS);
-      return data ? JSON.parse(data) : null;
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+      // Clean any old fake demo slugs
+      const fakeSlugs = new Set([
+        "yaz-kampanyasi",
+        "yeni-urun-lansmani",
+        "yatirimci-sunumu",
+        "newsletter-eylul",
+        "discord-toplulugu",
+      ]);
+      const cleaned = parsed.filter((l) => !fakeSlugs.has(l.slug));
+      if (cleaned.length !== parsed.length) {
+        window.localStorage.setItem(STORAGE_KEYS.DEMO_LINKS, JSON.stringify(cleaned));
+      }
+      return cleaned;
     } catch {
-      return null;
+      return [];
     }
   },
   setDemoLinks(links) {
     try {
-      window.localStorage.setItem(STORAGE_KEYS.DEMO_LINKS, JSON.stringify(links));
+      window.localStorage.setItem(STORAGE_KEYS.DEMO_LINKS, JSON.stringify(links || []));
     } catch (e) {
       console.error("Storage error:", e);
     }

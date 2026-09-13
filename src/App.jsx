@@ -15,7 +15,6 @@ import { DomainsPage } from "./pages/DomainsPage";
 import { BillingPage } from "./pages/BillingPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { AuthPage } from "./pages/AuthPage";
 
 // Modals
 import { CreateLinkModal } from "./components/modals/CreateLinkModal";
@@ -23,13 +22,44 @@ import { QrDetailModal } from "./components/modals/QrDetailModal";
 import { UpgradeModal } from "./components/modals/UpgradeModal";
 import { DeleteModal } from "./components/modals/DeleteModal";
 import { AddDomainModal } from "./components/modals/AddDomainModal";
+import { AuthModal } from "./components/modals/AuthModal";
+import { RedirectPage } from "./pages/RedirectPage";
 
 export default function App() {
-  const { user, authLoading } = useAuth();
+  const { authLoading, authModalOpen, setAuthModalOpen, authModalReason } = useAuth();
+
+  // Slug route detection for client-side redirection
+  const [redirectSlug, setRedirectSlug] = useState(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname.replace(/^\/+/, "").split("/")[0];
+      const ignored = ["", "login", "register", "admin", "api", "app"];
+      if (path && !ignored.includes(path.toLowerCase())) {
+        return path;
+      }
+    }
+    return null;
+  });
 
   // Navigation
   const [activePage, setActivePage] = useState("Overview");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("loss_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("loss_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Modal States
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -38,7 +68,18 @@ export default function App() {
   const [qrModalLink, setQrModalLink] = useState(null);
   const [deleteModalLink, setDeleteModalLink] = useState(null);
 
-  // Initial Auth Loading Screen
+  if (redirectSlug) {
+    return (
+      <RedirectPage
+        slug={redirectSlug}
+        onGoHome={() => {
+          window.history.pushState({}, "", "/");
+          setRedirectSlug(null);
+        }}
+      />
+    );
+  }
+
   if (authLoading) {
     return (
       <div
@@ -53,19 +94,14 @@ export default function App() {
           gap: "14px",
         }}
       >
-        <div className="brand-mark" style={{ width: "42px", height: "42px" }}>
-          <Link2 size={22} strokeWidth={2.5} />
+        <div className="brand-mark" style={{ width: "36px", height: "36px" }}>
+          <Link2 size={18} strokeWidth={2.5} />
         </div>
-        <span style={{ fontSize: "13px", fontWeight: 600 }}>
-          Çalışma alanı yükleniyor...
+        <span style={{ fontSize: "12px", fontWeight: 600 }}>
+          Yükleniyor...
         </span>
       </div>
     );
-  }
-
-  // If unauthenticated, show AuthPage
-  if (!user) {
-    return <AuthPage />;
   }
 
   return (
@@ -75,19 +111,20 @@ export default function App() {
         activePage={activePage}
         onSelectPage={setActivePage}
         onOpenCreateModal={() => setCreateModalOpen(true)}
-        onOpenUpgradeModal={() => setUpgradeModalOpen(true)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapse}
       />
 
-      {/* Main Area */}
+      {/* Main Content Area */}
       <div className="main-area">
         <Topbar
-          activePage={activePage}
           onOpenMobile={() => setMobileOpen(true)}
           onOpenCreateModal={() => setCreateModalOpen(true)}
-          onOpenUpgradeModal={() => setUpgradeModalOpen(true)}
           onSelectPage={setActivePage}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebarCollapse}
         />
 
         <main className="page-container">
@@ -166,7 +203,13 @@ export default function App() {
         onClose={() => setDomainModalOpen(false)}
       />
 
-      {/* Floating Notifications */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        reason={authModalReason}
+      />
+
+      {/* Toast Notifications */}
       <ToastContainer />
     </div>
   );

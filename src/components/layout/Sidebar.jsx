@@ -1,146 +1,213 @@
-import { Link2, Sparkles, ChevronDown, LogOut } from "lucide-react";
-import { PRIMARY_NAV_ITEMS, SECONDARY_NAV_ITEMS } from "../../constants/navigation";
-import { TIERS } from "../../constants/tiers";
+import {
+  Link2,
+  Plus,
+  Settings,
+  SlidersHorizontal,
+  Key,
+  Globe2,
+  CreditCard,
+  BarChart3,
+  LogIn,
+  LogOut,
+  Sparkles,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { formatNumber } from "../../utils/formatters";
+import { formatTimeAgo } from "../../utils/formatters";
 
 export function Sidebar({
   activePage,
   onSelectPage,
   onOpenCreateModal,
-  onOpenUpgradeModal,
   mobileOpen,
   onCloseMobile,
+  collapsed = false,
+  onToggleCollapse,
 }) {
-  const { user, currentTier, links, totalClicks, signOutUser } = useAuth();
-  const tierMeta = TIERS[currentTier] || TIERS.free;
+  const { user, links, requireAuth, signOutUser } = useAuth();
 
-  const usagePercent = Math.min(
-    100,
-    Math.round((links.length / (tierMeta.maxLinks || 50)) * 100)
-  );
+  const handleNavClick = (pageId, requiresLogin = false) => {
+    if (requiresLogin && !user) {
+      requireAuth(`${pageId} bölümünü kullanmak için giriş yapmalısınız.`);
+      return;
+    }
+    onSelectPage(pageId);
+    onCloseMobile();
+  };
 
   return (
-    <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
-      {/* Brand Lockup */}
-      <div className="brand-lockup">
-        <div className="brand-mark">
-          <Link2 size={20} strokeWidth={2.5} />
-        </div>
-        <div className="brand-text">
-          <strong>
-            Long Story
-            <br />
-            <span>Short</span>
-          </strong>
-        </div>
-      </div>
-
-      {/* Workspace Card */}
-      <div className="workspace-card" onClick={() => onSelectPage("Settings")}>
-        <div className="workspace-badge-icon">
-          {currentTier === "enterprise" ? "👑" : currentTier === "pro" ? "⚡" : "🚀"}
-        </div>
-        <div className="workspace-meta">
-          <span className="workspace-eyebrow">{tierMeta.name}</span>
-          <span className="workspace-name">Ana Çalışma Alanı</span>
-        </div>
-        <ChevronDown size={14} color="var(--text-muted)" />
-      </div>
-
-      {/* Primary Navigation */}
-      <div className="nav-group">
-        <p className="nav-title">Çalışma Alanı</p>
-        {PRIMARY_NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              className={`nav-button ${isActive ? "active" : ""}`}
-              onClick={() => {
-                onSelectPage(item.id);
-                onCloseMobile();
-              }}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-              {item.showCount && links.length > 0 && (
-                <span className="nav-badge">{links.length}</span>
-              )}
-            </button>
-          );
-        })}
-
-        <p className="nav-title nav-title-spaced">Yönetim & Ayarlar</p>
-        {SECONDARY_NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              className={`nav-button ${isActive ? "active" : ""}`}
-              onClick={() => {
-                onSelectPage(item.id);
-                onCloseMobile();
-              }}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-              {item.proBadge && currentTier === "free" && (
-                <span className="nav-pro-pill">PRO</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Sidebar Footer with Usage & Profile */}
-      <div className="sidebar-footer">
-        <div className="plan-usage-box">
-          <div className="usage-header">
-            <span>Link Kotası</span>
-            <span>
-              {links.length} / {tierMeta.maxLinks}
-            </span>
+    <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+      {/* Top: Logo + Brand + Collapse Toggle */}
+      <div className="sidebar-top-header">
+        {!collapsed && (
+          <div
+            className="sidebar-brand-group"
+            onClick={() => {
+              onSelectPage("Overview");
+              onCloseMobile();
+            }}
+            style={{ cursor: "pointer" }}
+            title="Loss Ana Sayfa"
+          >
+            <div className="sidebar-brand-icon">
+              <Link2 size={16} strokeWidth={2.8} />
+            </div>
+            <span className="sidebar-app-name">Loss</span>
           </div>
-          <div className="progress-track">
+        )}
+
+        <button
+          className="sidebar-toggle-btn"
+          onClick={onToggleCollapse}
+          title={collapsed ? "Menüyü Genişlet" : "Menüyü Daralt"}
+          aria-label={collapsed ? "Menüyü Genişlet" : "Menüyü Daralt"}
+          style={collapsed ? { margin: "0 auto" } : {}}
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
+      </div>
+
+      <button
+        className="sidebar-new-btn"
+        onClick={() => {
+          onOpenCreateModal();
+          onCloseMobile();
+        }}
+        title="Yeni Link Kısalt"
+      >
+        <Plus size={16} strokeWidth={2.2} />
+        {!collapsed && <span>Yeni Link Kısalt</span>}
+      </button>
+
+      {/* Recents list (Chat history style) */}
+      {!collapsed && links.length > 0 && (
+        <div className="sidebar-recents-section">
+          <p className="sidebar-section-title">GEÇMİŞ BAĞLANTILAR</p>
+          <div className="sidebar-recents-list">
+            {links.slice(0, 5).map((link) => (
+              <div
+                key={link.id || link.slug}
+                className="sidebar-recent-item"
+                onClick={() => {
+                  onSelectPage("Overview");
+                  onCloseMobile();
+                }}
+                title={link.destination}
+              >
+                <strong className="sidebar-recent-title">
+                  {link.title || link.slug}
+                </strong>
+                <span className="sidebar-recent-meta">
+                  {formatTimeAgo(link.createdAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Workspace Menu */}
+      <div className="sidebar-nav-section">
+        {!collapsed && <p className="sidebar-section-title">ARAÇLAR</p>}
+        <div className="sidebar-nav-list">
+          <button
+            className={`sidebar-nav-btn ${activePage === "Overview" ? "active" : ""}`}
+            onClick={() => handleNavClick("Overview")}
+            title="Kısaltıcı"
+          >
+            <Link2 size={16} />
+            {!collapsed && <span>Kısaltıcı</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activePage === "Analytics" ? "active" : ""}`}
+            onClick={() => handleNavClick("Analytics", true)}
+            title="Analitik"
+          >
+            <BarChart3 size={16} />
+            {!collapsed && <span>Analitik</span>}
+            {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activePage === "Domains" ? "active" : ""}`}
+            onClick={() => handleNavClick("Domains", true)}
+            title="Özel Domain"
+          >
+            <Globe2 size={16} />
+            {!collapsed && <span>Özel Domain</span>}
+            {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activePage === "Integrations" ? "active" : ""}`}
+            onClick={() => handleNavClick("Integrations", true)}
+            title="REST API"
+          >
+            <Key size={16} />
+            {!collapsed && <span>REST API</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activePage === "Billing" ? "active" : ""}`}
+            onClick={() => handleNavClick("Billing")}
+            title="Paketler"
+          >
+            <CreditCard size={16} />
+            {!collapsed && <span>Paketler</span>}
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom bar: User Profile or Login CTA */}
+      <div className="sidebar-bottom-bar">
+        {user ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "space-between",
+              width: "100%",
+            }}
+          >
             <div
-              className="progress-fill"
-              style={{ width: `${usagePercent}%` }}
-            />
-          </div>
-          <p className="usage-desc">
-            <strong>{formatNumber(totalClicks)}</strong> toplam tıklama
-          </p>
-
-          {currentTier === "free" ? (
-            <button className="upgrade-btn" onClick={onOpenUpgradeModal}>
-              <Sparkles size={13} color="#2563eb" /> Pro'ya Yükselt
-            </button>
-          ) : (
-            <button
-              className="upgrade-btn"
-              onClick={() => onSelectPage("Billing")}
+              style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden", cursor: "pointer" }}
+              onClick={() => handleNavClick("Settings")}
+              title={user.displayName || user.email}
             >
-              Planı Yönet
-            </button>
-          )}
-        </div>
+              <div className="user-avatar-circle" style={{ width: "28px", height: "28px", fontSize: "11px" }}>
+                {(user.displayName || user.email || "U").slice(0, 2).toUpperCase()}
+              </div>
+              {!collapsed && (
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {user.displayName || user.email?.split("@")[0]}
+                </span>
+              )}
+            </div>
 
-        {/* User profile row */}
-        <div className="user-profile-row" onClick={signOutUser} title="Çıkış Yap">
-          <div className="user-avatar-circle">
-            {(user?.displayName || user?.email || "U").slice(0, 2).toUpperCase()}
+            {!collapsed && (
+              <button
+                className="icon-btn"
+                style={{ width: "26px", height: "26px" }}
+                onClick={signOutUser}
+                title="Çıkış Yap"
+              >
+                <LogOut size={13} />
+              </button>
+            )}
           </div>
-          <div className="user-info">
-            <span className="user-name">
-              {user?.displayName || "Yönetici"}
-            </span>
-            <span className="user-email">{user?.email}</span>
-          </div>
-          <LogOut size={16} color="var(--text-muted)" />
-        </div>
+        ) : (
+          <button
+            className="sidebar-bottom-btn"
+            style={{ width: "100%", justifyContent: "center", background: "var(--bg-surface-subtle)" }}
+            onClick={() => requireAuth("Bağlantılarınızı hesabınıza bağlamak için giriş yapın.")}
+            title="Giriş Yap / Kaydol"
+          >
+            <LogIn size={15} />
+            {!collapsed && <span>Giriş Yap / Kaydol</span>}
+          </button>
+        )}
       </div>
     </aside>
   );

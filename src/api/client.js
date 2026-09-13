@@ -1,9 +1,9 @@
 /**
  * Unified API Client for Long Story Short
- * Communicates with backend Vercel/Node functions or falls back to local storage in demo mode.
+ * Communicates with backend Vercel/Node functions or local storage.
+ * Strictly zero fake/mock links: only links created by the user are stored.
  */
 
-import { INITIAL_DEMO_LINKS } from "./mockData";
 import { storage } from "../utils/storage";
 
 const API_BASE = (import.meta.env.VITE_SHORTENER_API_URL || "")
@@ -24,33 +24,72 @@ async function readResponse(res) {
   return json;
 }
 
+// Filter out any stale mock demo links from older sessions
+function cleanStoredLinks(links) {
+  if (!Array.isArray(links)) return [];
+  const fakeSlugs = new Set([
+    "yaz-kampanyasi",
+    "yeni-urun-lansmani",
+    "yatirimci-sunumu",
+    "newsletter-eylul",
+    "discord-toplulugu",
+  ]);
+  return links.filter((l) => !fakeSlugs.has(l.slug));
+}
+
 export const api = {
   async getLinks(user) {
-    // If demo mode or no active Firebase user
+    // If guest or demo mode
     if (!user || user.isDemo) {
       const stored = storage.getDemoLinks();
-      if (!stored) {
-        storage.setDemoLinks(INITIAL_DEMO_LINKS);
-        return INITIAL_DEMO_LINKS;
+      const cleaned = cleanStoredLinks(stored || []);
+      if (stored && cleaned.length !== stored.length) {
+        storage.setDemoLinks(cleaned);
       }
-      return stored;
+      return cleaned;
     }
 
     // Real Firebase user
-    const token = await user.getIdToken();
-    const res = await fetch(`${API_BASE}/api/links`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await readResponse(res);
-    return data.links || [];
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`${API_BASE}/api/links`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await readResponse(res);
+      return data.links || [];
+    } catch (err) {
+      console.warn("Backend API unavailable, using local library:", err.message);
+      const stored = storage.getDemoLinks();
+      return cleanStoredLinks(stored || []);
+    }
   },
 
   async createLink(user, payload) {
     if (!user || user.isDemo) {
-      const existing = (storage.getDemoLinks() || INITIAL_DEMO_LINKS);
-      const host = "go.consolaktif.com.tr";
-      const slug = payload.slug || Math.random().toString(36).substring(2, 8);
-      
+      const existing = cleanStoredLinks(storage.getDemoLinks() || []);
+      const isLocal =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1");
+      const host = isLocal ? window.location.host : "go.consolaktif.com.tr";
+
+      let slug = (payload.slug || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, "");
+      if (!slug) {
+        slug = Math.random().toString(36).substring(2, 8);
+      }
+
+      // Check if custom slug is already used
+      if (existing.some((l) => l.slug?.toLowerCase() === slug)) {
+        throw new Error(
+          `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`
+        );
+      }
+
+      const shortUrl = `${isLocal ? window.location.origin : "https://" + host}/${slug}`;
+
       const newLink = {
         id: `${host}__${slug}`,
         domain: host,
@@ -58,7 +97,7 @@ export const api = {
         title: payload.title || new URL(payload.destination).hostname,
         tag: payload.tag || "",
         destination: payload.destination,
-        shortUrl: `https://${host}/${slug}`,
+        shortUrl,
         status: "active",
         clickCount: 0,
         password: payload.password || "",
@@ -87,7 +126,7 @@ export const api = {
 
   async deleteLink(user, linkId) {
     if (!user || user.isDemo) {
-      const existing = (storage.getDemoLinks() || INITIAL_DEMO_LINKS);
+      const existing = cleanStoredLinks(storage.getDemoLinks() || []);
       const updated = existing.filter((l) => l.id !== linkId);
       storage.setDemoLinks(updated);
       return { success: true };
@@ -107,9 +146,15 @@ export const api = {
 
   async updateLinkStatus(user, linkId, status) {
     if (!user || user.isDemo) {
-      const existing = (storage.getDemoLinks() || INITIAL_DEMO_LINKS);
+      const existing = cleanStoredLinks(storage.getDemoLinks() || []);
       const updated = existing.map((l) =>
-        l.id === linkId ? { ...l, status, updatedAt: { seconds: Math.floor(Date.now() / 1000) } } : l
+        l.id === linkId
+          ? {
+              ...l,
+              status,
+              updatedAt: { seconds: Math.floor(Date.now() / 1000) },
+            }
+          : l
       );
       storage.setDemoLinks(updated);
       return { success: true, status };

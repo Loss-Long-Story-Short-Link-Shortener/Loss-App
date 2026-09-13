@@ -20,9 +20,17 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState("");
 
-  const [theme, setThemeState] = useState(() => storage.getTheme());
+  const [theme, setThemeState] = useState(() => {
+    const saved = window.localStorage.getItem("lss_theme");
+    if (!saved || saved === "light") {
+      window.localStorage.setItem("lss_theme", "dark");
+      return "dark";
+    }
+    return saved;
+  });
   const [currentTier, setCurrentTierState] = useState(() => storage.getTier());
   const [billingPeriod, setBillingPeriod] = useState("monthly");
 
@@ -60,23 +68,27 @@ export function AuthProvider({ children }) {
     storage.setTier(tier);
   }, []);
 
-  // Firebase auth listener & demo detection
-  useEffect(() => {
-    // If not configured or user chose demo mode previously
-    if (!firebaseConfigured || storage.isDemoUser()) {
-      const demoUser = {
-        uid: "demo_admin_user_01",
-        email: "demo@consolaktif.com.tr",
-        displayName: "Demo Yönetici",
-        isDemo: true,
-      };
-      setUser(demoUser);
-      setIsDemo(true);
-      setAuthLoading(false);
-      return;
-    }
+  // Auth gate helper: if not authenticated, prompts AuthModal
+  const requireAuth = useCallback(
+    (reason = "Bu özelliği kullanmak için giriş yapmalısınız.") => {
+      if (!user) {
+        setAuthModalReason(reason);
+        setAuthModalOpen(true);
+        return false;
+      }
+      return true;
+    },
+    [user]
+  );
 
-    if (!auth) {
+  // Firebase auth listener
+  useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      // Offline/local guest mode by default
+      const savedUser = storage.isDemoUser()
+        ? { uid: "demo_user", email: "demo@consolaktif.com.tr", displayName: "Demo Kullanıcı" }
+        : null;
+      setUser(savedUser);
       setAuthLoading(false);
       return;
     }
@@ -84,11 +96,8 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        setIsDemo(false);
-        storage.setDemoUser(false);
       } else {
         setUser(null);
-        setIsDemo(false);
       }
       setAuthLoading(false);
     });
@@ -96,27 +105,21 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // Fetch links whenever user changes
+  // Fetch links (user's real links or guest localStorage links)
   const refreshLinks = useCallback(async () => {
-    if (!user) return;
     setLinksLoading(true);
     try {
       const fetched = await api.getLinks(user);
       setLinks(fetched);
     } catch (err) {
-      console.error("Linkler alınırken hata:", err);
-      showToast("Linkler yüklenirken bir sorun oluştu", "error");
+      console.error("Linkler yüklenemedi:", err);
     } finally {
       setLinksLoading(false);
     }
-  }, [user, showToast]);
+  }, [user]);
 
   useEffect(() => {
-    if (user) {
-      refreshLinks();
-    } else {
-      setLinks([]);
-    }
+    refreshLinks();
   }, [user, refreshLinks]);
 
   // Actions
@@ -130,7 +133,7 @@ export function AuthProvider({ children }) {
       }
       const created = await api.createLink(user, payload);
       setLinks((prev) => [created, ...prev]);
-      showToast("Kısa link başarıyla oluşturuldu!", "success");
+      showToast("Kısa bağlantı hazır! ✦", "success");
       return created;
     },
     [user, links, currentTier, showToast]
@@ -153,7 +156,7 @@ export function AuthProvider({ children }) {
         prev.map((l) => (l.id === linkId ? { ...l, status: nextStatus } : l))
       );
       showToast(
-        nextStatus === "active" ? "Bağlantı aktif edildi" : "Bağlantı duraklatıldı",
+        nextStatus === "active" ? "Bağlantı yayında" : "Bağlantı duraklatıldı",
         "info"
       );
     },
@@ -162,20 +165,19 @@ export function AuthProvider({ children }) {
 
   const loginWithDemo = useCallback(() => {
     const demoUser = {
-      uid: "demo_admin_user_01",
+      uid: "demo_admin_01",
       email: "demo@consolaktif.com.tr",
       displayName: "Demo Yönetici",
       isDemo: true,
     };
     storage.setDemoUser(true);
-    setIsDemo(true);
     setUser(demoUser);
+    setAuthModalOpen(false);
     showToast("Demo çalışma alanına giriş yapıldı ✦", "success");
   }, [showToast]);
 
   const signOutUser = useCallback(async () => {
     storage.setDemoUser(false);
-    setIsDemo(false);
     setUser(null);
     if (auth) {
       try {
@@ -194,7 +196,10 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     authLoading,
-    isDemo,
+    authModalOpen,
+    setAuthModalOpen,
+    authModalReason,
+    requireAuth,
     firebaseConfigured,
     theme,
     setTheme,
