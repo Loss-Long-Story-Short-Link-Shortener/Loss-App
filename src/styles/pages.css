@@ -83,12 +83,25 @@
 
 .lss-prompt-input {
   flex: 1;
-  background: transparent;
+  background: transparent !important;
+  background-color: transparent !important;
   border: none;
   outline: none;
   font-size: 15px;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   font-family: inherit;
+}
+
+.lss-prompt-input:-webkit-autofill,
+.lss-prompt-input:-webkit-autofill:hover,
+.lss-prompt-input:-webkit-autofill:focus,
+.lss-prompt-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #141414 inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  transition: background-color 999999s ease-in-out 0s !important;
 }
 
 .lss-prompt-input::placeholder {

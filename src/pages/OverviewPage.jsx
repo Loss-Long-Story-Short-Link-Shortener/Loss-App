@@ -14,6 +14,7 @@ import {
   X,
   Loader2,
   Globe2,
+  Compass,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { isValidUrl, normalizeUrl, formatTimeAgo } from "../utils/formatters";
@@ -68,6 +69,14 @@ export function OverviewPage({
 
   const [showPassword, setShowPassword] = useState(false);
   const [linkPassword, setLinkPassword] = useState("");
+  const [showRedirectPage, setShowRedirectPage] = useState(() => {
+    try {
+      const saved = localStorage.getItem("loss_default_redirect_page");
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  });
 
   const isLocal =
     typeof window !== "undefined" &&
@@ -133,6 +142,7 @@ export function OverviewPage({
         destination,
         slug: customSlug.trim() || undefined,
         password: linkPassword.trim() || undefined,
+        redirectPage: showRedirectPage,
       };
 
       const newLink = await addLink(payload);
@@ -214,6 +224,8 @@ export function OverviewPage({
             <input
               id="lss-main-input"
               type="text"
+              autoComplete="off"
+              spellCheck="false"
               className="lss-prompt-input"
               placeholder="Kısaltılacak bağlantıyı buraya yapıştırın..."
               value={inputUrl}
@@ -393,6 +405,16 @@ export function OverviewPage({
           >
             <Lock size={13} />
             <span>{showPassword ? "✓ Şifre Aktif" : "Şifre Koruması"}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`lss-suggestion-btn ${showRedirectPage ? "active" : ""}`}
+            onClick={() => setShowRedirectPage((prev) => !prev)}
+            title="Linke tıklandığında 3 saniyelik markalı ara yönlendirme sayfası gösterilsin mi?"
+          >
+            <Compass size={13} />
+            <span>{showRedirectPage ? "✓ Ara Sayfa Açık (3sn)" : "Doğrudan Geçiş (0sn)"}</span>
           </button>
         </div>
 
