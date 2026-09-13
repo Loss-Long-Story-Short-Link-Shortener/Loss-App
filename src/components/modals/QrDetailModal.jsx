@@ -1,31 +1,16 @@
-import { useEffect, useState } from "react";
-import {
-  Download,
-  Copy,
-  Check,
-  ExternalLink,
-  ArrowRight,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Check, Copy, Download, X } from "lucide-react";
 import { Modal } from "../common/Modal";
-import { QrCodeSvg, downloadQrSvg, downloadQrPng } from "../common/QrCodeSvg";
+import { QrCodeSvg, downloadQrPng, downloadQrSvg } from "../common/QrCodeSvg";
 import { useAuth } from "../../context/AuthContext";
 
-const patternOptions = [
-  { id: "square", label: "Square" },
-  { id: "dots", label: "Dots" },
-  { id: "rounded", label: "Rounded" },
-];
+const patternOptions = [{ id: "square" }, { id: "dots" }, { id: "rounded" }];
 
-const frameOptions = [
-  { id: "none", label: "None" },
-  { id: "scan", label: "Scan" },
-  { id: "clean", label: "Clean" },
-];
+const frameOptions = [{ id: "none" }, { id: "clean" }, { id: "scan" }];
 
 const colorPresets = [
   "#000000",
-  "#f43f5e",
+  "#ef4444",
   "#f59e0b",
   "#22c55e",
   "#3b82f6",
@@ -36,81 +21,84 @@ const colorPresets = [
 
 export function QrDetailModal({ isOpen, onClose, link }) {
   const { showToast } = useAuth();
-  const [mode, setMode] = useState("short");
-  const [inputUrl, setInputUrl] = useState("https://example.com/my-long-url");
-  const [fgColor, setFgColor] = useState("#0f172a");
-  const [bgColor, setBgColor] = useState("#ffffff");
-  const [ecLevel, setEcLevel] = useState("L");
-  const [pattern, setPattern] = useState("square");
-  const [frame, setFrame] = useState("none");
-  const [copied, setCopied] = useState(false);
 
   const shortUrl =
     link?.shortUrl ||
-    (link && `https://loss.tr/${link.slug}`) ||
-    "https://loss.tr/9lthwz";
-  const baseUrl = inputUrl.trim() || shortUrl;
+    (link ? `https://loss.tr/${link.slug}` : "https://loss.tr/9lthwz");
+  const [destination, setDestination] = useState(shortUrl);
+  const [fgColor, setFgColor] = useState("#0f172a");
+  const [bgColor, setBgColor] = useState("#ffffff");
+  const [pattern, setPattern] = useState("square");
+  const [frame, setFrame] = useState("none");
+  const [ecLevel, setEcLevel] = useState("L");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (link && !inputUrl.trim()) {
-      setInputUrl(shortUrl);
+    if (link) {
+      setDestination(shortUrl);
     }
-  }, [link, shortUrl, inputUrl]);
+  }, [link, shortUrl]);
 
-  const qrId = `qr-modal-${link?.slug || "code"}`;
+  const qrId = useMemo(() => `qr-modal-${link?.slug || "link"}`, [link]);
+
+  const normalizedDestination = useMemo(() => {
+    const value = destination.trim();
+    if (!value) return shortUrl;
+    return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  }, [destination, shortUrl]);
+
+  const previewFrameStyle = {
+    background: bgColor,
+    padding: frame === "none" ? "18px" : "14px",
+    borderRadius:
+      frame === "clean" ? "18px" : frame === "scan" ? "16px" : "12px",
+    boxShadow: "0 12px 28px rgba(10, 10, 16, 0.2)",
+    border: frame === "none" ? "none" : `2px solid ${fgColor}22`,
+    width: "fit-content",
+  };
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shortUrl);
       setCopied(true);
       showToast("Link kopyalandı ✦", "success");
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
       showToast("Kopyalanamadı", "error");
     }
   };
 
   const handleDownloadSvg = () => {
-    downloadQrSvg(qrId, `${link?.slug || "link"}-qr.svg`);
-    showToast("SVG QR Kodu İndirildi", "success");
+    const id = qrId;
+    downloadQrSvg(id, `${link?.slug || "custom"}-qr.svg`);
+    showToast("SVG indirildi", "success");
   };
 
   const handleDownloadPng = () => {
-    downloadQrPng(qrId, `${link?.slug || "link"}-qr.png`, 1000);
-    showToast("Yüksek Çözünürlüklü PNG İndirildi", "success");
+    const id = qrId;
+    downloadQrPng(id, `${link?.slug || "custom"}-qr.png`, 1000);
+    showToast("HD PNG indirildi", "success");
   };
 
-  const previewFrameStyle = {
-    background: bgColor,
-    padding: frame === "none" ? "22px" : "16px",
-    borderRadius:
-      frame === "clean" ? "18px" : frame === "scan" ? "16px" : "12px",
-    boxShadow: "0 12px 28px rgba(10, 10, 16, 0.18)",
-    border: frame === "none" ? "none" : `2px solid ${fgColor}22`,
-    width: "fit-content",
-    maxWidth: "100%",
-  };
+  if (!isOpen) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} hideHeader maxWidth="980px">
       <div
         style={{
-          background: "#1f2a35",
+          background: "#1c2734",
           borderRadius: "22px",
           border: "1px solid rgba(255,255,255,0.08)",
           overflow: "hidden",
-          minHeight: "640px",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 24px 60px rgba(2, 4, 9, 0.42)",
+          boxShadow: "0 30px 60px rgba(2, 6, 23, 0.45)",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
-            padding: "18px 22px 14px",
+            alignItems: "center",
+            padding: "18px 22px 16px",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
             background: "rgba(255,255,255,0.02)",
           }}
@@ -118,47 +106,39 @@ export function QrDetailModal({ isOpen, onClose, link }) {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: "10px",
               background: "#202b36",
+              border: "1px solid rgba(255,255,255,0.05)",
               borderRadius: "14px",
-              border: "1px solid rgba(255,255,255,0.08)",
-              overflow: "hidden",
               padding: "4px",
+              gap: "4px",
             }}
           >
             <button
               type="button"
-              onClick={() => setMode("short")}
               style={{
                 border: "none",
-                background: mode === "short" ? "#ffffff" : "transparent",
-                color: mode === "short" ? "#0f172a" : "#d4d7dc",
-                fontWeight: 700,
-                fontSize: "14px",
+                background: "#ffffff",
+                color: "#0f172a",
                 borderRadius: "10px",
                 padding: "10px 18px",
+                fontWeight: 700,
                 cursor: "pointer",
-                boxShadow:
-                  mode === "short" ? "0 4px 12px rgba(15,23,42,0.12)" : "none",
+                fontSize: "14px",
               }}
             >
               Short Link
             </button>
             <button
               type="button"
-              onClick={() => setMode("qr")}
               style={{
                 border: "none",
-                background: mode === "qr" ? "#ffffff" : "transparent",
-                color: mode === "qr" ? "#0f172a" : "#d4d7dc",
-                fontWeight: 700,
-                fontSize: "14px",
+                background: "transparent",
+                color: "#dfe6ee",
                 borderRadius: "10px",
                 padding: "10px 18px",
+                fontWeight: 700,
                 cursor: "pointer",
-                boxShadow:
-                  mode === "qr" ? "0 4px 12px rgba(15,23,42,0.12)" : "none",
+                fontSize: "14px",
               }}
             >
               QR Code
@@ -166,20 +146,21 @@ export function QrDetailModal({ isOpen, onClose, link }) {
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close modal"
             style={{
               width: "34px",
               height: "34px",
               borderRadius: "10px",
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.04)",
-              color: "#f7f7f7",
+              color: "#f8fafc",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
             }}
-            aria-label="Close"
           >
             <X size={18} />
           </button>
@@ -188,55 +169,51 @@ export function QrDetailModal({ isOpen, onClose, link }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.55fr 0.9fr",
-            gap: "30px",
-            padding: "28px 28px 24px",
+            gridTemplateColumns: "1.45fr 0.85fr",
             background: "#f3f4f6",
-            flex: 1,
-            alignItems: "stretch",
+            gap: "28px",
+            padding: "28px 26px",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div>
             <h2
               style={{
-                fontSize: "38px",
-                lineHeight: 1.08,
-                color: "#0f172a",
+                fontSize: "40px",
+                lineHeight: 1.1,
                 letterSpacing: "-0.06em",
-                marginBottom: "22px",
+                color: "#0f172a",
+                marginBottom: "20px",
                 fontWeight: 700,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
               }}
             >
               Create a QR Code
             </h2>
 
-            <div style={{ marginBottom: "22px" }}>
+            <div style={{ marginBottom: "24px" }}>
               <div
                 style={{
                   fontSize: "17px",
                   fontWeight: 700,
                   color: "#111827",
-                  marginBottom: "12px",
+                  marginBottom: "10px",
                 }}
               >
                 1. Enter your URL destination
               </div>
               <input
                 type="text"
-                value={baseUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
                 placeholder="https://example.com/my-long-url"
                 style={{
                   width: "100%",
-                  padding: "15px 16px",
-                  borderRadius: "12px",
                   border: "1px solid #d7dbe2",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  borderRadius: "12px",
+                  padding: "15px 16px",
                   fontSize: "16px",
-                  color: "#1f2937",
-                  background: "#fff",
                   outline: "none",
-                  boxShadow: "inset 0 1px 0 rgba(15,23,42,0.02)",
                 }}
               />
             </div>
@@ -247,56 +224,55 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                   fontSize: "17px",
                   fontWeight: 700,
                   color: "#111827",
-                  marginBottom: "14px",
+                  marginBottom: "12px",
                 }}
               >
                 2. Select a style (optional)
               </div>
 
-              <div style={{ display: "flex", gap: "16px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                    minWidth: "120px",
-                  }}
-                >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "18px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div style={{ minWidth: "120px" }}>
                   <div
                     style={{
-                      fontSize: "14px",
+                      fontSize: "13px",
                       color: "#4b5563",
-                      marginBottom: "2px",
+                      marginBottom: "8px",
                     }}
                   >
                     Pattern
                   </div>
-                  <div style={{ display: "flex", gap: "12px" }}>
+                  <div style={{ display: "flex", gap: "10px" }}>
                     {patternOptions.map((option) => (
                       <button
                         key={option.id}
                         type="button"
                         onClick={() => setPattern(option.id)}
                         style={{
-                          width: "86px",
-                          height: "74px",
-                          borderRadius: "14px",
+                          width: "82px",
+                          height: "72px",
+                          borderRadius: "12px",
                           border:
-                            option.id === pattern
+                            pattern === option.id
                               ? "2px solid #111827"
-                              : "1px solid #d7d9df",
+                              : "1px solid #d6d9df",
                           background: "#ffffff",
+                          padding: "10px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          padding: "12px",
                         }}
                       >
                         <QrCodeSvg
                           id={`pattern-${option.id}`}
-                          value={baseUrl}
-                          size={48}
+                          value={normalizedDestination}
+                          size={46}
                           fgColor="#0f172a"
                           bgColor="#ffffff"
                           errorCorrectionLevel={ecLevel}
@@ -307,58 +283,51 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                    minWidth: "120px",
-                  }}
-                >
+                <div style={{ minWidth: "120px" }}>
                   <div
                     style={{
-                      fontSize: "14px",
+                      fontSize: "13px",
                       color: "#4b5563",
-                      marginBottom: "2px",
+                      marginBottom: "8px",
                     }}
                   >
                     Corners
                   </div>
-                  <div style={{ display: "flex", gap: "12px" }}>
+                  <div style={{ display: "flex", gap: "10px" }}>
                     {frameOptions.map((option) => (
                       <button
                         key={option.id}
                         type="button"
                         onClick={() => setFrame(option.id)}
                         style={{
-                          width: "86px",
-                          height: "74px",
-                          borderRadius: "14px",
+                          width: "82px",
+                          height: "72px",
+                          borderRadius: "12px",
                           border:
-                            option.id === frame
+                            frame === option.id
                               ? "2px solid #111827"
-                              : "1px solid #d7d9df",
+                              : "1px solid #d6d9df",
                           background: "#ffffff",
+                          padding: "12px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          padding: "10px",
                         }}
                       >
                         <div
                           style={{
-                            width: "32px",
-                            height: "32px",
+                            width: "28px",
+                            height: "28px",
+                            border: "2px solid #111827",
                             borderRadius:
                               option.id === "none"
                                 ? "6px"
                                 : option.id === "scan"
                                   ? "10px"
                                   : "8px",
-                            border: "2px solid #111827",
                             background:
-                              option.id === "none" ? "#fff" : "transparent",
+                              option.id === "none" ? "#ffffff" : "transparent",
                           }}
                         />
                       </button>
@@ -368,18 +337,25 @@ export function QrDetailModal({ isOpen, onClose, link }) {
               </div>
             </div>
 
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: "22px" }}>
               <div
                 style={{
                   fontSize: "17px",
                   fontWeight: 700,
                   color: "#111827",
-                  marginBottom: "14px",
+                  marginBottom: "12px",
                 }}
               >
                 3. Choose your color (optional)
               </div>
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
                 {colorPresets.map((color) => (
                   <button
                     key={color}
@@ -389,15 +365,14 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                       width: "26px",
                       height: "26px",
                       borderRadius: "50%",
+                      background: color,
                       border:
                         fgColor === color
                           ? "2px solid #111827"
-                          : "1px solid rgba(17,24,39,0.2)",
-                      background: color,
+                          : "1px solid rgba(15,23,42,0.18)",
                       cursor: "pointer",
-                      padding: 0,
                     }}
-                    aria-label={`Select ${color}`}
+                    aria-label={`Select QR color ${color}`}
                   />
                 ))}
                 <label
@@ -406,10 +381,9 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                     width: "26px",
                     height: "26px",
                     borderRadius: "50%",
-                    border: "1px solid rgba(17,24,39,0.2)",
                     overflow: "hidden",
+                    border: "1px solid rgba(15,23,42,0.18)",
                     cursor: "pointer",
-                    position: "relative",
                   }}
                 >
                   <input
@@ -428,56 +402,54 @@ export function QrDetailModal({ isOpen, onClose, link }) {
               </div>
             </div>
 
-            <div style={{ marginBottom: "12px" }}>
+            <div>
               <div
                 style={{
                   fontSize: "17px",
                   fontWeight: 700,
                   color: "#111827",
-                  marginBottom: "14px",
+                  marginBottom: "10px",
                 }}
               >
                 4. Select a frame (optional)
               </div>
-              <div
-                style={{ display: "flex", gap: "12px", alignItems: "center" }}
-              >
+              <div style={{ display: "flex", gap: "12px" }}>
                 <button
                   type="button"
                   onClick={() => setFrame("none")}
                   style={{
-                    width: "56px",
-                    height: "56px",
+                    width: "54px",
+                    height: "54px",
                     borderRadius: "12px",
                     border:
                       frame === "none"
                         ? "2px solid #111827"
-                        : "1px solid #d7d9df",
+                        : "1px solid #d6d9df",
                     background: "#fff",
+                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer",
                   }}
                 >
-                  <X size={26} color="#111827" />
+                  <X size={24} color="#111827" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setFrame("clean")}
                   style={{
-                    width: "56px",
-                    height: "56px",
+                    width: "54px",
+                    height: "54px",
                     borderRadius: "12px",
                     border:
                       frame === "clean"
                         ? "2px solid #111827"
-                        : "1px solid #d7d9df",
+                        : "1px solid #d6d9df",
                     background: "#fff",
+                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer",
                   }}
                 >
                   <div
@@ -493,18 +465,18 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                   type="button"
                   onClick={() => setFrame("scan")}
                   style={{
-                    width: "56px",
-                    height: "56px",
+                    width: "54px",
+                    height: "54px",
                     borderRadius: "12px",
                     border:
                       frame === "scan"
                         ? "2px solid #111827"
-                        : "1px solid #d7d9df",
+                        : "1px solid #d6d9df",
                     background: "#fff",
+                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer",
                   }}
                 >
                   <div
@@ -524,29 +496,26 @@ export function QrDetailModal({ isOpen, onClose, link }) {
             style={{
               display: "flex",
               flexDirection: "column",
-              justifyContent: "flex-start",
               alignItems: "center",
-              borderLeft: "1px solid rgba(17,24,39,0.08)",
-              paddingLeft: "20px",
+              paddingTop: "10px",
             }}
           >
             <div
               style={{
+                width: "100%",
+                maxWidth: "340px",
                 background: "#f7f7f7",
                 borderRadius: "18px",
                 padding: "18px 18px 12px",
-                width: "100%",
-                maxWidth: "320px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                minHeight: "360px",
               }}
             >
               <div style={previewFrameStyle}>
                 <QrCodeSvg
                   id={qrId}
-                  value={baseUrl}
+                  value={normalizedDestination}
                   size={180}
                   fgColor={fgColor}
                   bgColor={bgColor}
@@ -567,36 +536,18 @@ export function QrDetailModal({ isOpen, onClose, link }) {
 
               <button
                 type="button"
-                onClick={() => {
-                  const targetUrl = baseUrl || shortUrl;
-                  if (targetUrl) {
-                    const normalized = /^https?:\/\//i.test(targetUrl)
-                      ? targetUrl
-                      : `https://${targetUrl}`;
-                    const activeQr = document.getElementById(qrId);
-                    if (activeQr) {
-                      downloadQrPng(
-                        qrId,
-                        `${link?.slug || "qr"}-code.png`,
-                        1000,
-                      );
-                      showToast("HD PNG QR Kodu hazırlandı", "success");
-                    } else {
-                      showToast("QR kod hazır değil", "error");
-                    }
-                  }
-                }}
+                onClick={handleDownloadPng}
                 style={{
-                  width: "100%",
                   marginTop: "18px",
+                  width: "100%",
                   border: "none",
-                  background:
-                    "linear-gradient(90deg, #2563eb 0%, #204cff 100%)",
-                  color: "#fff",
                   borderRadius: "12px",
-                  padding: "14px 18px",
+                  background:
+                    "linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%)",
+                  color: "#fff",
                   fontWeight: 700,
-                  fontSize: "18px",
+                  fontSize: "17px",
+                  padding: "14px 18px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -609,7 +560,7 @@ export function QrDetailModal({ isOpen, onClose, link }) {
 
               <div
                 style={{
-                  marginTop: "14px",
+                  marginTop: "12px",
                   color: "#64748b",
                   fontSize: "13px",
                 }}
@@ -619,20 +570,20 @@ export function QrDetailModal({ isOpen, onClose, link }) {
 
               <div
                 style={{
-                  display: "flex",
-                  gap: "12px",
-                  marginTop: "20px",
+                  marginTop: "18px",
                   width: "100%",
+                  display: "flex",
+                  gap: "10px",
                 }}
               >
-                {Array.from({ length: 3 }).map((_, index) => (
+                {[1, 2, 3].map((item) => (
                   <div
-                    key={index}
+                    key={item}
                     style={{
                       flex: 1,
                       background: "#ffffff",
+                      border: "1px solid rgba(15,23,42,0.08)",
                       borderRadius: "10px",
-                      border: "1px solid rgba(17,24,39,0.08)",
                       padding: "10px 8px",
                       textAlign: "center",
                     }}
@@ -659,6 +610,89 @@ export function QrDetailModal({ isOpen, onClose, link }) {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            borderTop: "1px solid rgba(15,23,42,0.08)",
+            padding: "18px 24px",
+            background: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              background: "#eef2ff",
+              borderRadius: "14px",
+              padding: "9px 12px",
+              color: "#1d4ed8",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "12px",
+              fontWeight: 600,
+            }}
+          >
+            <span>{shortUrl}</span>
+            <button
+              type="button"
+              onClick={handleCopy}
+              style={{
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "#1d4ed8",
+              }}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              type="button"
+              onClick={handleDownloadSvg}
+              style={{
+                border: "1px solid #d7dbe2",
+                background: "#ffffff",
+                color: "#0f172a",
+                borderRadius: "12px",
+                padding: "10px 16px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Download size={15} /> SVG
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPng}
+              style={{
+                border: "none",
+                background: "#2563eb",
+                color: "#fff",
+                borderRadius: "12px",
+                padding: "10px 16px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Download size={15} /> PNG
+            </button>
           </div>
         </div>
       </div>
