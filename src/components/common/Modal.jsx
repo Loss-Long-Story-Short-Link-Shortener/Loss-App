@@ -8,6 +8,7 @@ export function Modal({
   subtitle,
   children,
   maxWidth = "520px",
+  hideHeader = false,
 }) {
   useEffect(() => {
     function handleKeyDown(e) {
@@ -32,16 +33,24 @@ export function Modal({
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          <div>
-            <h3 className="modal-title">{title}</h3>
-            {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+        {!hideHeader && (
+          <div className="modal-header">
+            <div>
+              <h3 className="modal-title">{title}</h3>
+              {subtitle && <p className="modal-subtitle">{subtitle}</p>}
+            </div>
+            <button className="modal-close-btn" onClick={onClose}>
+              <X size={18} />
+            </button>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
-            <X size={18} />
-          </button>
+        )}
+        <div
+          className={
+            hideHeader ? "modal-body modal-body-no-header" : "modal-body"
+          }
+        >
+          {children}
         </div>
-        <div className="modal-body">{children}</div>
       </div>
     </div>
   );
