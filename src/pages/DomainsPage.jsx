@@ -43,7 +43,7 @@ export function DomainsPage({ onOpenAddDomainModal, onOpenUpgradeModal }) {
             <Globe2 size={18} />
           </div>
           <div>
-            <div className="domain-name">go.consolaktif.com.tr</div>
+            <div className="domain-name">loss.tr</div>
             <div className="domain-sub">Sistem Varsayılan Alan Adı · Otomatik SSL Aktif</div>
           </div>
         </div>
@@ -76,7 +76,7 @@ export function DomainsPage({ onOpenAddDomainModal, onOpenUpgradeModal }) {
             <tr>
               <td>CNAME</td>
               <td>go (veya link)</td>
-              <td>cname.consolaktif.com.tr</td>
+              <td>cname.loss.tr</td>
               <td>Otomatik Let's Encrypt SSL</td>
             </tr>
           </tbody>

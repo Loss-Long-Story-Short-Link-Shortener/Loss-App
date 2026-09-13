@@ -13,13 +13,13 @@ export default async function handler(request, response) {
   const requestHost = (
     request.headers["x-forwarded-host"] ||
     request.headers.host ||
-    "go.consolaktif.com.tr"
+    "loss.tr"
   )
     .split(",")[0]
     .trim()
     .toLowerCase();
   const configuredHost = (
-    process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr"
+    process.env.SHORT_LINK_HOST || "loss.tr"
   )
     .trim()
     .toLowerCase();
@@ -33,8 +33,10 @@ export default async function handler(request, response) {
       ...new Set([
         configuredHost,
         requestHost,
-        "go.consolaktif.com.tr",
+        "loss.tr",
+        "go.loss.tr",
         "loss.consolaktif.com.tr",
+        "go.consolaktif.com.tr",
       ]),
     ];
     const candidateSlugs = [...new Set([rawSlug, lowerSlug])];

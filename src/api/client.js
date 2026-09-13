@@ -61,7 +61,7 @@ export const api = {
           return {
             id: d.id,
             ...data,
-            shortUrl: `https://go.consolaktif.com.tr/${data.slug}`,
+            shortUrl: `https://loss.tr/${data.slug}`,
           };
         });
         if (userLinks.length > 0) {
@@ -100,7 +100,7 @@ export const api = {
       typeof window !== "undefined" &&
       (window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1");
-    const host = "go.consolaktif.com.tr";
+    const host = "loss.tr";
 
     let slug = (payload.slug || "")
       .trim()
@@ -154,6 +154,7 @@ export const api = {
         };
 
         await Promise.all([
+          setDoc(doc(db, "links", `loss.tr__${slug}`), linkData),
           setDoc(doc(db, "links", `loss.consolaktif.com.tr__${slug}`), linkData),
           setDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`), linkData),
         ]);
@@ -172,11 +173,12 @@ export const api = {
     const updated = existing.filter((l) => l.id !== linkId);
     storage.setDemoLinks(updated);
 
-    // Delete from Firestore across both candidate hosts
+    // Delete from Firestore across candidate hosts
     if (db) {
       try {
         const slug = linkId.includes("__") ? linkId.split("__").pop() : linkId;
         await Promise.all([
+          deleteDoc(doc(db, "links", `loss.tr__${slug}`)),
           deleteDoc(doc(db, "links", `loss.consolaktif.com.tr__${slug}`)),
           deleteDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`)),
         ]);

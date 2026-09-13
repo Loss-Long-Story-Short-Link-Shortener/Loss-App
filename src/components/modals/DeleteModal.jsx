@@ -46,7 +46,7 @@ export function DeleteModal({ isOpen, onClose, link }) {
           <div>
             <strong>Bu link kalıcı olarak silinecek:</strong>
             <p style={{ marginTop: "4px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
-              {link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`}
+              {link.shortUrl || `https://loss.tr/${link.slug}`}
             </p>
           </div>
         </div>

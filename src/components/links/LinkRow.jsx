@@ -22,7 +22,7 @@ export function LinkRow({
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const shortUrl = link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`;
+  const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
 
   const handleCopy = async (e) => {
     e.stopPropagation();

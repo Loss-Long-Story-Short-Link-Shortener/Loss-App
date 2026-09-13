@@ -39,13 +39,13 @@ export default async function handler(request, response) {
       ""
     ).split(",")[0].trim().toLowerCase();
 
-    const host = requestHost.includes("loss.consolaktif.com.tr")
-      ? "loss.consolaktif.com.tr"
-      : (process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr").trim().toLowerCase();
+    const host = requestHost && !requestHost.includes("localhost")
+      ? requestHost
+      : (process.env.SHORT_LINK_HOST || "loss.tr").trim().toLowerCase();
 
-    const baseUrl = requestHost.includes("loss.consolaktif.com.tr")
-      ? "https://loss.consolaktif.com.tr"
-      : (process.env.SHORT_LINK_BASE_URL || "https://go.consolaktif.com.tr").replace(/\/$/, "");
+    const baseUrl = requestHost && !requestHost.includes("localhost")
+      ? `https://${requestHost}`
+      : (process.env.SHORT_LINK_BASE_URL || "https://loss.tr").replace(/\/$/, "");
 
     // 1. GET: List user's links
     if (request.method === "GET") {

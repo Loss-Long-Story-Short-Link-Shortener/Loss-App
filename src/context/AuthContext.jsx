@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
     if (!firebaseConfigured || !auth) {
       // Offline/local guest mode by default
       const savedUser = storage.isDemoUser()
-        ? { uid: "demo_user", email: "demo@consolaktif.com.tr", displayName: "Demo Kullanıcı" }
+        ? { uid: "demo_user", email: "demo@loss.tr", displayName: "Demo Kullanıcı" }
         : null;
       setUser(savedUser);
       setAuthLoading(false);
@@ -166,7 +166,7 @@ export function AuthProvider({ children }) {
   const loginWithDemo = useCallback(() => {
     const demoUser = {
       uid: "demo_admin_01",
-      email: "demo@consolaktif.com.tr",
+      email: "demo@loss.tr",
       displayName: "Demo Yönetici",
       isDemo: true,
     };

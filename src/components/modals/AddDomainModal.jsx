@@ -92,7 +92,7 @@ export function AddDomainModal({ isOpen, onClose }) {
               <tr>
                 <td>CNAME</td>
                 <td>{domainName.split(".")[0] || "@"}</td>
-                <td>cname.consolaktif.com.tr</td>
+                <td>cname.loss.tr</td>
                 <td>Otomatik</td>
               </tr>
             </tbody>

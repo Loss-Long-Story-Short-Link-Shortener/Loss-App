@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
   const { links, showToast } = useAuth();
-  const [customText, setCustomText] = useState("https://go.consolaktif.com.tr");
+  const [customText, setCustomText] = useState("https://loss.tr");
 
   return (
     <div>
@@ -105,7 +105,7 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
       {links.length > 0 ? (
         <div className="qr-grid">
           {links.map((link) => {
-            const shortUrl = link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`;
+            const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
             const qrCardId = `qr-card-${link.slug || "item"}`;
             return (
               <div key={link.id || link.slug} className="qr-card">

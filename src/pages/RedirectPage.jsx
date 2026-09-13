@@ -24,15 +24,24 @@ export function RedirectPage({ slug, onGoHome }) {
       // If not in local storage, query Firestore
       if (!found && db) {
         try {
-          const snap = await getDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`));
-          if (snap.exists()) {
-            const data = snap.data();
-            found = {
-              id: snap.id,
-              ...data,
-              slug,
-              shortUrl: `https://go.consolaktif.com.tr/${slug}`,
-            };
+          const candidateKeys = [
+            `loss.tr__${slug}`,
+            `go.loss.tr__${slug}`,
+            `loss.consolaktif.com.tr__${slug}`,
+            `go.consolaktif.com.tr__${slug}`,
+          ];
+          for (const key of candidateKeys) {
+            const snap = await getDoc(doc(db, "links", key));
+            if (snap.exists()) {
+              const data = snap.data();
+              found = {
+                id: snap.id,
+                ...data,
+                slug,
+                shortUrl: `https://loss.tr/${slug}`,
+              };
+              break;
+            }
           }
         } catch (err) {
           console.warn("Firestore lookup failed:", err);
@@ -52,9 +61,9 @@ export function RedirectPage({ slug, onGoHome }) {
             );
             storage.setDemoLinks(updated);
           }
-          if (db) {
+          if (db && found.id) {
             try {
-              updateDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`), {
+              updateDoc(doc(db, "links", found.id), {
                 clickCount: increment(1),
               }).catch(() => {});
             } catch {}

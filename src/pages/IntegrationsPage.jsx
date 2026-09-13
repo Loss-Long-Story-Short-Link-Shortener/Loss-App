@@ -27,7 +27,7 @@ export function IntegrationsPage() {
   };
 
   const curlCode = `# Yeni Kısa Link Oluşturma (POST /api/links)
-curl -X POST https://go.consolaktif.com.tr/api/links \\
+curl -X POST https://loss.tr/api/links \\
   -H "Authorization: Bearer ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{

@@ -34,7 +34,7 @@ export function SettingsPage() {
               type="email"
               readOnly
               className="input-text"
-              value={user?.email || "demo@consolaktif.com.tr"}
+              value={user?.email || "demo@loss.tr"}
               disabled
             />
           </div>
@@ -51,8 +51,8 @@ export function SettingsPage() {
 
           <div className="form-group">
             <label className="form-label">Varsayılan Kısa Link Alan Adı</label>
-            <select className="select-box" defaultValue="go.consolaktif.com.tr">
-              <option value="go.consolaktif.com.tr">go.consolaktif.com.tr (Varsayılan)</option>
+            <select className="select-box" defaultValue="loss.tr">
+              <option value="loss.tr">loss.tr (Varsayılan)</option>
             </select>
           </div>
 

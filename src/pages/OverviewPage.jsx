@@ -89,11 +89,11 @@ export function OverviewPage({
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1"
       ) {
-        return "https://loss.consolaktif.com.tr";
+        return "https://loss.tr";
       }
       return window.location.origin;
     }
-    return "https://loss.consolaktif.com.tr";
+    return "https://loss.tr";
   };
 
   const getWorkingUrl = (slug) => {
@@ -194,7 +194,7 @@ export function OverviewPage({
       <div className="chatgpt-top-pill-wrap">
         <div className="chatgpt-domain-pill">
           <span className="domain-dot" />
-          <span>go.consolaktif.com.tr</span>
+          <span>loss.tr</span>
         </div>
       </div>
 
@@ -265,7 +265,7 @@ export function OverviewPage({
                   </button>
                 </div>
                 <div className="inline-slug-group">
-                  <span className="inline-domain-label">go.consolaktif.com.tr /</span>
+                  <span className="inline-domain-label">loss.tr /</span>
                   <input
                     type="text"
                     className="inline-slug-input"

@@ -271,7 +271,7 @@ export function CreateLinkModal({ isOpen, onClose, onOpenUpgradeModal }) {
                 <div className="form-group">
                   <label className="form-label">Alan Adı</label>
                   <select className="select-box" disabled>
-                    <option>go.consolaktif.com.tr</option>
+                    <option>loss.tr</option>
                   </select>
                 </div>
 
@@ -329,7 +329,7 @@ export function CreateLinkModal({ isOpen, onClose, onOpenUpgradeModal }) {
               >
                 <span>Önizleme Kısa Link: </span>
                 <strong style={{ color: "var(--primary)", fontFamily: "var(--font-mono)" }}>
-                  https://go.consolaktif.com.tr/{cleanSlug || "[otomatik-slug]"}
+                  https://loss.tr/{cleanSlug || "[otomatik-slug]"}
                 </strong>
               </div>
             </div>

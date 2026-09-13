@@ -11,9 +11,9 @@ export function QrCodeSvg({
 }) {
   const qrData = useMemo(() => {
     try {
-      return generateQrMatrix(value || "https://go.consolaktif.com.tr");
+      return generateQrMatrix(value || "https://loss.tr");
     } catch {
-      return generateQrMatrix("https://go.consolaktif.com.tr");
+      return generateQrMatrix("https://loss.tr");
     }
   }, [value]);
 

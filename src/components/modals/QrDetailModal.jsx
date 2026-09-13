@@ -11,7 +11,7 @@ export function QrDetailModal({ isOpen, onClose, link }) {
   const [copied, setCopied] = useState(false);
 
   if (!link) return null;
-  const shortUrl = link.shortUrl || `https://go.consolaktif.com.tr/${link.slug}`;
+  const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
   const qrId = `qr-modal-${link.slug || "code"}`;
 
   const handleCopy = async () => {
