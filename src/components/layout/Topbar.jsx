@@ -7,8 +7,6 @@ import {
   LogOut,
   CreditCard,
   Key,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -16,8 +14,6 @@ export function Topbar({
   onOpenMobile,
   onOpenCreateModal,
   onSelectPage,
-  sidebarCollapsed = false,
-  onToggleSidebar,
 }) {
   const { user, theme, setTheme, requireAuth, signOutUser } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -32,22 +28,6 @@ export function Topbar({
         >
           <Menu size={18} />
         </button>
-
-        {onToggleSidebar && (
-          <button
-            className="topbar-sidebar-toggle-btn"
-            onClick={onToggleSidebar}
-            title={sidebarCollapsed ? "Menüyü Aç" : "Menüyü Kapat"}
-            aria-label={sidebarCollapsed ? "Menüyü Aç" : "Menüyü Kapat"}
-          >
-            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
-        )}
-
-        <div className="chatgpt-topbar-brand">
-          <strong>Loss</strong>
-          <span className="brand-badge-pill">v1.0</span>
-        </div>
       </div>
 
       <div className="topbar-right">

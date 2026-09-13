@@ -123,8 +123,6 @@ export default function App() {
           onOpenMobile={() => setMobileOpen(true)}
           onOpenCreateModal={() => setCreateModalOpen(true)}
           onSelectPage={setActivePage}
-          sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={toggleSidebarCollapse}
         />
 
         <main className="page-container">
