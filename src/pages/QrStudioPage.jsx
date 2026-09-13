@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
   const { links, showToast } = useAuth();
   const [customText, setCustomText] = useState("https://loss.tr");
+  const [ecLevel, setEcLevel] = useState("L");
 
   return (
     <div>
@@ -50,11 +51,12 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
               size={140}
               fgColor="#0f172a"
               bgColor="#ffffff"
+              errorCorrectionLevel={ecLevel}
             />
           </div>
 
           <div style={{ flex: 1, minWidth: "260px" }}>
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: "14px" }}>
               <label className="form-label">QR Kod İçeriği / URL</label>
               <input
                 type="text"
@@ -63,6 +65,41 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                 onChange={(e) => setCustomText(e.target.value)}
                 placeholder="https://siteniz.com"
               />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "16px" }}>
+              <label className="form-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>QR Detay / Karmaşıklık Düzeyi</span>
+                <span style={{ color: "var(--primary)", fontSize: "11px", fontWeight: 600 }}>
+                  {ecLevel === "L" ? "✦ Sade (Linke Özel Minimum Kare)" : ecLevel === "M" ? "Standart" : "Yüksek Koruma"}
+                </span>
+              </label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${ecLevel === "L" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setEcLevel("L")}
+                  style={{ fontSize: "11px", padding: "4px 10px" }}
+                >
+                  Sade (Önerilen)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${ecLevel === "M" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setEcLevel("M")}
+                  style={{ fontSize: "11px", padding: "4px 10px" }}
+                >
+                  Standart
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${ecLevel === "H" ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setEcLevel("H")}
+                  style={{ fontSize: "11px", padding: "4px 10px" }}
+                >
+                  Yüksek
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: "10px" }}>

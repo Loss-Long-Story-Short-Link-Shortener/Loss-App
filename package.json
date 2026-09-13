@@ -13,6 +13,7 @@
     "firebase": "^12.19.0",
     "firebase-admin": "13.6.0",
     "lucide-react": "latest",
+    "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"

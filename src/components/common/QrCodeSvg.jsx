@@ -8,17 +8,18 @@ export function QrCodeSvg({
   bgColor = "#ffffff",
   className = "",
   id = "qr-svg",
+  errorCorrectionLevel = "L",
+  padding = 2,
 }) {
   const qrData = useMemo(() => {
     try {
-      return generateQrMatrix(value || "https://loss.tr");
+      return generateQrMatrix(value || "https://loss.tr", { errorCorrectionLevel });
     } catch {
-      return generateQrMatrix("https://loss.tr");
+      return generateQrMatrix("https://loss.tr", { errorCorrectionLevel });
     }
-  }, [value]);
+  }, [value, errorCorrectionLevel]);
 
   const { size: matrixSize, matrix } = qrData;
-  const padding = 2; // quiet zone
   const totalGrid = matrixSize + padding * 2;
 
   // Build SVG path

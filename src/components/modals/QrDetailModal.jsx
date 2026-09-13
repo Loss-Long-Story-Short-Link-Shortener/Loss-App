@@ -8,6 +8,7 @@ export function QrDetailModal({ isOpen, onClose, link }) {
   const { showToast } = useAuth();
   const [fgColor, setFgColor] = useState("#0f172a");
   const [bgColor, setBgColor] = useState("#ffffff");
+  const [ecLevel, setEcLevel] = useState("L");
   const [copied, setCopied] = useState(false);
 
   if (!link) return null;
@@ -60,6 +61,7 @@ export function QrDetailModal({ isOpen, onClose, link }) {
             size={180}
             fgColor={fgColor}
             bgColor={bgColor}
+            errorCorrectionLevel={ecLevel}
           />
         </div>
 
@@ -92,6 +94,58 @@ export function QrDetailModal({ isOpen, onClose, link }) {
           >
             {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
           </button>
+        </div>
+
+        {/* Density selector */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            background: "var(--bg-surface-subtle)",
+            border: "1px solid var(--border-subtle)",
+            padding: "8px 14px",
+            borderRadius: "var(--radius-sm)",
+            marginBottom: "20px",
+            fontSize: "12px",
+          }}
+        >
+          <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>Görünüm:</span>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              type="button"
+              onClick={() => setEcLevel("L")}
+              style={{
+                background: ecLevel === "L" ? "var(--primary)" : "transparent",
+                color: ecLevel === "L" ? "#fff" : "var(--text-muted)",
+                border: "none",
+                borderRadius: "4px",
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              ✦ Sade (Önerilen)
+            </button>
+            <button
+              type="button"
+              onClick={() => setEcLevel("M")}
+              style={{
+                background: ecLevel === "M" ? "var(--primary)" : "transparent",
+                color: ecLevel === "M" ? "#fff" : "var(--text-muted)",
+                border: "none",
+                borderRadius: "4px",
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Standart
+            </button>
+          </div>
         </div>
 
         {/* Color controls */}
