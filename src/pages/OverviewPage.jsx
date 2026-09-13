@@ -189,29 +189,21 @@ export function OverviewPage({
   }
 
   return (
-    <div className="chatgpt-canvas">
-      {/* Top Model / Domain Capsule */}
-      <div className="chatgpt-top-pill-wrap">
-        <div className="chatgpt-domain-pill">
-          <span className="domain-dot" />
-          <span>loss.tr</span>
-        </div>
-      </div>
-
+    <div className="lss-canvas">
       {/* Center Hero */}
-      <div className="chatgpt-hero-center">
-        <div className="chatgpt-brand-icon">
+      <div className="lss-hero-center">
+        <div className="lss-brand-icon">
           <img src="/loss.png" alt="Long Story Short" />
         </div>
-        <h1 className="chatgpt-hero-title">Neyi kısaltmak istersiniz?</h1>
-        <p className="chatgpt-hero-subtitle">
+        <h1 className="lss-hero-title">Neyi kısaltmak istersiniz?</h1>
+        <p className="lss-hero-subtitle">
           Bir bağlantı yapıştırın ve anında kısaltın. Kayıt olmadan hemen kullanabilirsiniz.
         </p>
 
-        {/* ChatGPT Style Floating Prompt Box */}
+        {/* Floating Prompt Box */}
         <form
           onSubmit={handleQuickShorten}
-          className={`chatgpt-prompt-box ${busy ? "compressing" : ""}`}
+          className={`lss-prompt-box ${busy ? "compressing" : ""}`}
         >
           {busy ? (
             <div className="compressing-text-track">
@@ -220,9 +212,9 @@ export function OverviewPage({
             </div>
           ) : (
             <input
-              id="chatgpt-main-input"
+              id="lss-main-input"
               type="text"
-              className="chatgpt-prompt-input"
+              className="lss-prompt-input"
               placeholder="Kısaltılacak bağlantıyı buraya yapıştırın..."
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
@@ -233,7 +225,7 @@ export function OverviewPage({
 
           <button
             type="submit"
-            className={`chatgpt-send-btn ${inputUrl.trim() && !busy ? "active" : ""}`}
+            className={`lss-send-btn ${inputUrl.trim() && !busy ? "active" : ""}`}
             disabled={busy || !inputUrl.trim()}
             aria-label="Kısalt"
           >
@@ -371,10 +363,10 @@ export function OverviewPage({
         )}
 
         {/* Quick Suggestion Pills */}
-        <div className="chatgpt-pill-suggestions">
+        <div className="lss-pill-suggestions">
           <button
             type="button"
-            className={`chatgpt-suggestion-btn ${showCustomSlug ? "active" : ""}`}
+            className={`lss-suggestion-btn ${showCustomSlug ? "active" : ""}`}
             onClick={() => setShowCustomSlug((prev) => !prev)}
           >
             <Sliders size={13} />
@@ -383,7 +375,7 @@ export function OverviewPage({
 
           <button
             type="button"
-            className={`chatgpt-suggestion-btn ${showUtm ? "active" : ""}`}
+            className={`lss-suggestion-btn ${showUtm ? "active" : ""}`}
             onClick={() => setShowUtm((prev) => !prev)}
           >
             <Sparkles size={13} />
@@ -392,7 +384,7 @@ export function OverviewPage({
 
           <button
             type="button"
-            className={`chatgpt-suggestion-btn ${showPassword ? "active" : ""}`}
+            className={`lss-suggestion-btn ${showPassword ? "active" : ""}`}
             onClick={() => {
               if (requireAuth("Şifreli bağlantı oluşturmak için hesap gereklidir.")) {
                 setShowPassword((prev) => !prev);
@@ -544,14 +536,14 @@ export function OverviewPage({
         )}
       </div>
 
-      {/* Feed of Shortened Links (ChatGPT Response Cards) */}
+      {/* Feed of Shortened Links */}
       {links.length > 0 && (
-        <div className="chatgpt-feed-container">
-          <div className="chatgpt-feed-header">
+        <div className="lss-feed-container">
+          <div className="lss-feed-header">
             <span>Kısaltılan Bağlantılar ({links.length})</span>
             {!user && (
               <button
-                className="chatgpt-save-account-btn"
+                className="lss-save-account-btn"
                 onClick={() => requireAuth("Bağlantılarınızı buluta yedeklemek için giriş yapın.")}
               >
                 <Sparkles size={13} /> Hesabına Kaydet / Giriş Yap
@@ -559,17 +551,17 @@ export function OverviewPage({
             )}
           </div>
 
-          <div className="chatgpt-feed-list">
+          <div className="lss-feed-list">
             {links.map((link) => {
               const displayShortUrl = getWorkingUrl(link.slug);
               const isCopied = copiedId === link.id;
 
               return (
-                <div key={link.id || link.slug} className="chatgpt-link-card">
-                  <div className="chatgpt-card-left">
-                    <div className="chatgpt-card-url-row">
+                <div key={link.id || link.slug} className="lss-link-card">
+                  <div className="lss-card-left">
+                    <div className="lss-card-url-row">
                       <span
-                        className="chatgpt-card-short-url"
+                        className="lss-card-short-url"
                         onClick={() => handleCopyLink(link)}
                         title="Kopyalamak için tıkla"
                         style={{ cursor: "pointer" }}
@@ -577,7 +569,7 @@ export function OverviewPage({
                         {displayShortUrl}
                       </span>
                       <button
-                        className={`chatgpt-copy-btn ${isCopied ? "copied" : ""}`}
+                        className={`lss-copy-btn ${isCopied ? "copied" : ""}`}
                         onClick={() => handleCopyLink(link)}
                         title="Panoya Kopyala"
                       >
@@ -586,7 +578,7 @@ export function OverviewPage({
                       </button>
                     </div>
 
-                    <div className="chatgpt-card-dest-row" title={link.destination}>
+                    <div className="lss-card-dest-row" title={link.destination}>
                       <img
                         src={getFaviconUrl(link.destination)}
                         alt=""
@@ -596,7 +588,7 @@ export function OverviewPage({
                       <span className="dest-text">{link.destination}</span>
                     </div>
 
-                    <div className="chatgpt-card-meta-row">
+                    <div className="lss-card-meta-row">
                       <span className="meta-time">
                         <Clock size={12} /> {formatTimeAgo(link.createdAt)}
                       </span>
@@ -612,9 +604,9 @@ export function OverviewPage({
                     </div>
                   </div>
 
-                  <div className="chatgpt-card-actions">
+                  <div className="lss-card-actions">
                     <button
-                      className="chatgpt-action-pill"
+                      className="lss-action-pill"
                       onClick={() => onOpenQr(link)}
                       title="QR Kod Al"
                     >
@@ -623,7 +615,7 @@ export function OverviewPage({
                     </button>
 
                     <button
-                      className="chatgpt-action-pill"
+                      className="lss-action-pill"
                       onClick={() => handleOpenLink(link)}
                       title="Bağlantıyı Aç / Test Et"
                     >
@@ -631,7 +623,7 @@ export function OverviewPage({
                     </button>
 
                     <button
-                      className="chatgpt-action-pill danger"
+                      className="lss-action-pill danger"
                       onClick={() => handleDeleteLink(link)}
                       title="Sil"
                     >

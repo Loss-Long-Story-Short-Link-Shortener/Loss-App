@@ -6,7 +6,7 @@
   background-color: var(--bg-app);
 }
 
-/* Sidebar - Styled like Vibe / ChatGPT with Smooth Collapsible State */
+/* Sidebar - Collapsible State & Clean Navigation */
 .sidebar {
   width: 250px;
   flex-shrink: 0;

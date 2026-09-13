@@ -172,7 +172,7 @@ export function CreateLinkModal({ isOpen, onClose }) {
           {!showSlug ? (
             <button
               type="button"
-              className="chatgpt-suggestion-btn"
+              className="lss-suggestion-btn"
               style={{ alignSelf: "flex-start", marginTop: "2px" }}
               onClick={() => setShowSlug(true)}
             >
