@@ -14,14 +14,6 @@ export function CreateLinkModal({ isOpen, onClose }) {
   const [error, setError] = useState("");
   const [createdLink, setCreatedLink] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [redirectPage, setRedirectPage] = useState(() => {
-    try {
-      const saved = localStorage.getItem("loss_default_redirect_page");
-      return saved !== null ? saved === "true" : true;
-    } catch {
-      return true;
-    }
-  });
 
   const cleanSlug = sanitizeSlug(customSlug);
 
@@ -50,7 +42,6 @@ export function CreateLinkModal({ isOpen, onClose }) {
       const payload = {
         destination: normalizeUrl(raw),
         slug: cleanSlug || undefined,
-        redirectPage,
       };
 
       const result = await addLink(payload);
@@ -169,8 +160,6 @@ export function CreateLinkModal({ isOpen, onClose }) {
             <input
               type="url"
               className="input-text"
-              autoComplete="off"
-              spellCheck="false"
               placeholder="https://siteniz.com/uzun-baglanti-adresi..."
               value={destinationUrl}
               onChange={(e) => setDestinationUrl(e.target.value)}
@@ -210,8 +199,6 @@ export function CreateLinkModal({ isOpen, onClose }) {
                 <input
                   type="text"
                   className="inline-slug-input"
-                  autoComplete="off"
-                  spellCheck="false"
                   placeholder="ozel-adiniz"
                   value={customSlug}
                   onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
@@ -220,39 +207,6 @@ export function CreateLinkModal({ isOpen, onClose }) {
               </div>
             </div>
           )}
-
-          {/* Redirect Page Interstitial Toggle */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "9px 12px",
-              background: "var(--bg-app)",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-subtle)",
-              marginTop: "4px",
-            }}
-          >
-            <div style={{ fontSize: "12px", textAlign: "left" }}>
-              <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                Ara Yönlendirme Sayfası
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                {redirectPage
-                  ? "3 saniyelik markalı karşılama & güvenlik ekranı"
-                  : "Anında doğrudan hedef siteye yönlendir (0sn)"}
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`btn btn-sm ${redirectPage ? "btn-primary" : "btn-secondary"}`}
-              style={{ fontSize: "11px", padding: "3px 10px", flexShrink: 0 }}
-              onClick={() => setRedirectPage((p) => !p)}
-            >
-              {redirectPage ? "✓ Açık" : "Kapalı"}
-            </button>
-          </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
             <button type="button" className="btn btn-secondary" onClick={handleClose} disabled={busy}>
