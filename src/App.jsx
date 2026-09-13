@@ -30,6 +30,10 @@ export default function App() {
   // Slug route detection for client-side redirection
   const [redirectSlug, setRedirectSlug] = useState(() => {
     if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const querySlug = params.get("r") || params.get("redirect") || params.get("slug");
+      if (querySlug) return querySlug;
+
       const path = window.location.pathname.replace(/^\/+/, "").split("/")[0];
       const ignored = ["", "login", "register", "admin", "api", "app"];
       if (path && !ignored.includes(path.toLowerCase())) {
