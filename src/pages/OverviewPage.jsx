@@ -201,7 +201,7 @@ export function OverviewPage({
       {/* Center Hero */}
       <div className="chatgpt-hero-center">
         <div className="chatgpt-brand-icon">
-          <Link2 size={28} strokeWidth={2.4} />
+          <img src="/loss.png" alt="Long Story Short" />
         </div>
         <h1 className="chatgpt-hero-title">Neyi kısaltmak istersiniz?</h1>
         <p className="chatgpt-hero-subtitle">

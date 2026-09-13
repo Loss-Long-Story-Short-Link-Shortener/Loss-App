@@ -93,9 +93,11 @@ export default function App() {
           gap: "14px",
         }}
       >
-        <div className="brand-mark" style={{ width: "36px", height: "36px" }}>
-          <Link2 size={18} strokeWidth={2.5} />
-        </div>
+        <img
+          src="/loss.png"
+          alt="Long Story Short"
+          style={{ width: "36px", height: "36px", objectFit: "contain" }}
+        />
         <span style={{ fontSize: "12px", fontWeight: 600 }}>
           Yükleniyor...
         </span>

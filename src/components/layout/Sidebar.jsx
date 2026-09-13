@@ -47,12 +47,12 @@ export function Sidebar({
               onCloseMobile();
             }}
             style={{ cursor: "pointer" }}
-            title="Loss Ana Sayfa"
+            title="Long Story Short"
           >
             <div className="sidebar-brand-icon">
-              <Link2 size={16} strokeWidth={2.8} />
+              <img src="/loss.png" alt="Long Story Short" />
             </div>
-            <span className="sidebar-app-name">Loss</span>
+            <span className="sidebar-app-name">Long Story Short</span>
           </div>
         )}
 

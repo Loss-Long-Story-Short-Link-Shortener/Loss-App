@@ -73,16 +73,19 @@
 }
 
 .chatgpt-brand-icon {
-  width: 54px;
-  height: 54px;
-  border-radius: var(--radius-full);
-  background: var(--primary);
-  color: #fff;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  box-shadow: 0 4px 20px var(--primary-glow);
+  filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.45));
+}
+
+.chatgpt-brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .chatgpt-hero-title {
