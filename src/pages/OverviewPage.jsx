@@ -83,8 +83,21 @@ export function OverviewPage({
     }
   };
 
+  const getDisplayBaseUrl = () => {
+    if (typeof window !== "undefined") {
+      if (
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      ) {
+        return "https://loss.consolaktif.com.tr";
+      }
+      return window.location.origin;
+    }
+    return "https://loss.consolaktif.com.tr";
+  };
+
   const getWorkingUrl = (slug) => {
-    return `https://go.consolaktif.com.tr/${slug}`;
+    return `${getDisplayBaseUrl()}/${slug}`;
   };
 
   const handleQuickShorten = async (e) => {
@@ -168,7 +181,7 @@ export function OverviewPage({
   let savingsPercent = 0;
   if (createdLink) {
     origLen = createdLink.destination.length;
-    const displayShortUrl = `https://go.consolaktif.com.tr/${createdLink.slug}`;
+    const displayShortUrl = getWorkingUrl(createdLink.slug);
     shortLen = displayShortUrl.length;
     if (origLen > shortLen) {
       savingsPercent = Math.round(((origLen - shortLen) / origLen) * 100);
@@ -413,7 +426,7 @@ export function OverviewPage({
                 title="Kopyalamak için tıkla"
                 style={{ cursor: "pointer" }}
               >
-                <span className="linear-short-domain">https://go.consolaktif.com.tr/</span>
+                <span className="linear-short-domain">{getDisplayBaseUrl()}/</span>
                 <span className="linear-short-slug">{createdLink.slug}</span>
               </div>
 
@@ -547,7 +560,7 @@ export function OverviewPage({
 
           <div className="chatgpt-feed-list">
             {links.map((link) => {
-              const displayShortUrl = `https://go.consolaktif.com.tr/${link.slug}`;
+              const displayShortUrl = getWorkingUrl(link.slug);
               const isCopied = copiedId === link.id;
 
               return (

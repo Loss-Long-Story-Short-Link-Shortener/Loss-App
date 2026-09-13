@@ -7,7 +7,9 @@ export default async function handler(request, response) {
     return response.status(405).send("Method not allowed");
   }
 
-  const slug = String(request.query.slug || "").toLowerCase();
+  const rawSlug = String(request.query.slug || "").trim();
+  const lowerSlug = rawSlug.toLowerCase();
+
   const requestHost = (
     request.headers["x-forwarded-host"] ||
     request.headers.host ||
@@ -22,23 +24,54 @@ export default async function handler(request, response) {
     .trim()
     .toLowerCase();
 
-  if (!slug || slug.length > 48)
+  if (!rawSlug || rawSlug.length > 48)
     return response.status(404).send("Link not found");
 
   try {
     const { db } = await getFirebaseAdmin();
-    const candidateHosts = [...new Set([configuredHost, requestHost])];
+    const candidateHosts = [
+      ...new Set([
+        configuredHost,
+        requestHost,
+        "go.consolaktif.com.tr",
+        "loss.consolaktif.com.tr",
+      ]),
+    ];
+    const candidateSlugs = [...new Set([rawSlug, lowerSlug])];
+
     let linkRef;
     let linkSnapshot;
+
+    // 1. Try direct document key lookup across candidate hosts and slug casings
     for (const host of candidateHosts) {
-      const candidateRef = db.collection("links").doc(`${host}__${slug}`);
-      const candidateSnapshot = await candidateRef.get();
-      if (candidateSnapshot.exists) {
-        linkRef = candidateRef;
-        linkSnapshot = candidateSnapshot;
-        break;
+      for (const s of candidateSlugs) {
+        const candidateRef = db.collection("links").doc(`${host}__${s}`);
+        const candidateSnapshot = await candidateRef.get();
+        if (candidateSnapshot.exists) {
+          linkRef = candidateRef;
+          linkSnapshot = candidateSnapshot;
+          break;
+        }
+      }
+      if (linkSnapshot?.exists) break;
+    }
+
+    // 2. Fallback query by slug field across collection
+    if (!linkSnapshot?.exists) {
+      for (const s of candidateSlugs) {
+        const querySnap = await db
+          .collection("links")
+          .where("slug", "==", s)
+          .limit(1)
+          .get();
+        if (!querySnap.empty) {
+          linkSnapshot = querySnap.docs[0];
+          linkRef = linkSnapshot.ref;
+          break;
+        }
       }
     }
+
     if (!linkSnapshot?.exists)
       return response.status(404).send("Link not found");
 

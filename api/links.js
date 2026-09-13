@@ -9,7 +9,7 @@ import {
 } from "./_firebase.js";
 
 function createSlug() {
-  return randomBytes(4).toString("base64url").slice(0, 7);
+  return randomBytes(4).toString("hex").slice(0, 6);
 }
 
 function normalizeSlug(value) {
@@ -32,11 +32,20 @@ export default async function handler(request, response) {
   try {
     const user = await requireUser(request);
     const { db } = await getFirebaseAdmin();
-    const host = (process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr")
-      .trim()
-      .toLowerCase();
-    const baseUrl =
-      process.env.SHORT_LINK_BASE_URL || "https://go.consolaktif.com.tr";
+    
+    const requestHost = (
+      request.headers["x-forwarded-host"] ||
+      request.headers.host ||
+      ""
+    ).split(",")[0].trim().toLowerCase();
+
+    const host = requestHost.includes("loss.consolaktif.com.tr")
+      ? "loss.consolaktif.com.tr"
+      : (process.env.SHORT_LINK_HOST || "go.consolaktif.com.tr").trim().toLowerCase();
+
+    const baseUrl = requestHost.includes("loss.consolaktif.com.tr")
+      ? "https://loss.consolaktif.com.tr"
+      : (process.env.SHORT_LINK_BASE_URL || "https://go.consolaktif.com.tr").replace(/\/$/, "");
 
     // 1. GET: List user's links
     if (request.method === "GET") {

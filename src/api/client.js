@@ -138,7 +138,7 @@ export const api = {
     // Save to Firestore so it works everywhere for real
     if (db) {
       try {
-        await setDoc(doc(db, "links", `${host}__${slug}`), {
+        const linkData = {
           ownerId: user?.uid || "guest",
           domain: host,
           slug,
@@ -151,7 +151,12 @@ export const api = {
           expiresAt: newLink.expiresAt || "",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+
+        await Promise.all([
+          setDoc(doc(db, "links", `loss.consolaktif.com.tr__${slug}`), linkData),
+          setDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`), linkData),
+        ]);
       } catch (err) {
         console.warn("Firestore sync warning:", err);
       }
@@ -167,11 +172,14 @@ export const api = {
     const updated = existing.filter((l) => l.id !== linkId);
     storage.setDemoLinks(updated);
 
-    // Delete from Firestore
+    // Delete from Firestore across both candidate hosts
     if (db) {
       try {
         const slug = linkId.includes("__") ? linkId.split("__").pop() : linkId;
-        await deleteDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`));
+        await Promise.all([
+          deleteDoc(doc(db, "links", `loss.consolaktif.com.tr__${slug}`)),
+          deleteDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`)),
+        ]);
       } catch (err) {
         console.warn("Firestore delete warning:", err);
       }
