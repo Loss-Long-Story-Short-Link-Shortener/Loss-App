@@ -6,7 +6,6 @@ import {
   LogIn,
   LogOut,
   CreditCard,
-  Key,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -91,16 +90,6 @@ export function Topbar({
                   <CreditCard size={13} /> Paketler
                 </button>
 
-                <button
-                  className="btn btn-subtle btn-sm"
-                  style={{ justifyContent: "flex-start" }}
-                  onClick={() => {
-                    onSelectPage("Integrations");
-                    setProfileOpen(false);
-                  }}
-                >
-                  <Key size={13} /> API Token
-                </button>
 
                 <button
                   className="btn btn-subtle btn-sm"

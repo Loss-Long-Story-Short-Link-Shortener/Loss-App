@@ -13,7 +13,6 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { QrStudioPage } from "./pages/QrStudioPage";
 import { DomainsPage } from "./pages/DomainsPage";
 import { BillingPage } from "./pages/BillingPage";
-import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 // Modals
@@ -160,8 +159,6 @@ export default function App() {
           )}
 
           {activePage === "Billing" && <BillingPage />}
-
-          {activePage === "Integrations" && <IntegrationsPage />}
 
           {activePage === "Settings" && <SettingsPage />}
         </main>

@@ -17,10 +17,9 @@ export const TIERS = {
       "Topluluk Desteği",
     ],
     disabled: [
-      "Özel Markalı Domain (go.sirket.com)",
+      "Özel Markalı Domain (link.sirketiniz.com)",
       "Şifre & Tarih Korumalı Linkler",
       "Canlı UTM Kampanya Oluşturucu",
-      "Geliştirici REST API & Webhooks",
     ],
   },
   pro: {
@@ -61,7 +60,7 @@ export const TIERS = {
     features: [
       "50,000 Bağlantı & 2.5M+ Tıklama",
       "25 Özel Markalı Alan Adı",
-      "Sınırsız REST API & Webhooks",
+      "Gelişmiş Webhook Bildirimleri",
       "Kurumsal 99.9% Kesintisiz SLA",
       "SSO & Ekip Yetkilendirme",
       "7/24 Öncelikli Mühendis Desteği",

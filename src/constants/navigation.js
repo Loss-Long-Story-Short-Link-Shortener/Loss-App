@@ -5,7 +5,6 @@ import {
   QrCode,
   Globe2,
   CreditCard,
-  Key,
   Settings2,
 } from "lucide-react";
 
@@ -51,12 +50,7 @@ export const SECONDARY_NAV_ITEMS = [
     description: "Abonelik planınızı ve kullanım kotalarınızı buradan yönetin.",
     proBadge: true,
   },
-  {
-    id: "Integrations",
-    label: "API & Geliştirici",
-    icon: Key,
-    description: "REST API üzerinden harici yazılımlarla entegrasyon kurun.",
-  },
+
   {
     id: "Settings",
     label: "Ayarlar",

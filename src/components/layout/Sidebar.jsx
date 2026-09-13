@@ -3,7 +3,6 @@ import {
   Plus,
   Settings,
   SlidersHorizontal,
-  Key,
   Globe2,
   CreditCard,
   BarChart3,
@@ -140,14 +139,6 @@ export function Sidebar({
             {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
           </button>
 
-          <button
-            className={`sidebar-nav-btn ${activePage === "Integrations" ? "active" : ""}`}
-            onClick={() => handleNavClick("Integrations", true)}
-            title="REST API"
-          >
-            <Key size={16} />
-            {!collapsed && <span>REST API</span>}
-          </button>
 
           <button
             className={`sidebar-nav-btn ${activePage === "Billing" ? "active" : ""}`}
