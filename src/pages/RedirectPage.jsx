@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link2, Lock, ArrowRight, AlertCircle, Globe2 } from "lucide-react";
 import { storage } from "../utils/storage";
+import { db } from "../firebase";
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 
 export function RedirectPage({ slug, onGoHome }) {
   const [loading, setLoading] = useState(true);
@@ -11,30 +13,69 @@ export function RedirectPage({ slug, onGoHome }) {
   const [favErr, setFavErr] = useState(false);
 
   useEffect(() => {
-    const rawLinks = storage.getDemoLinks() || [];
-    const found = rawLinks.find(
-      (l) => l.slug?.toLowerCase() === slug?.toLowerCase()
-    );
+    let active = true;
 
-    if (found) {
-      setLink(found);
+    async function resolveSlug() {
+      const rawLinks = storage.getDemoLinks() || [];
+      let found = rawLinks.find(
+        (l) => l.slug?.toLowerCase() === slug?.toLowerCase()
+      );
 
-      if (!found.password) {
-        // Increment click count immediately
-        const updated = rawLinks.map((l) =>
-          l.id === found.id ? { ...l, clickCount: (l.clickCount || 0) + 1 } : l
-        );
-        storage.setDemoLinks(updated);
-
-        // Instant natural redirect without artificial delay
-        const timer = setTimeout(() => {
-          window.location.replace(found.destination);
-        }, 180);
-
-        return () => clearTimeout(timer);
+      // If not in local storage, query Firestore
+      if (!found && db) {
+        try {
+          const snap = await getDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`));
+          if (snap.exists()) {
+            const data = snap.data();
+            found = {
+              id: snap.id,
+              ...data,
+              slug,
+              shortUrl: `https://go.consolaktif.com.tr/${slug}`,
+            };
+          }
+        } catch (err) {
+          console.warn("Firestore lookup failed:", err);
+        }
       }
+
+      if (!active) return;
+
+      if (found) {
+        setLink(found);
+
+        if (!found.password) {
+          // Increment click count
+          if (rawLinks.some((l) => l.id === found.id)) {
+            const updated = rawLinks.map((l) =>
+              l.id === found.id ? { ...l, clickCount: (l.clickCount || 0) + 1 } : l
+            );
+            storage.setDemoLinks(updated);
+          }
+          if (db) {
+            try {
+              updateDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`), {
+                clickCount: increment(1),
+              }).catch(() => {});
+            } catch {}
+          }
+
+          // Instant natural redirect
+          const timer = setTimeout(() => {
+            window.location.replace(found.destination);
+          }, 180);
+
+          return () => clearTimeout(timer);
+        }
+      }
+      setLoading(false);
     }
-    setLoading(false);
+
+    resolveSlug();
+
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
   const handlePasswordSubmit = (e) => {

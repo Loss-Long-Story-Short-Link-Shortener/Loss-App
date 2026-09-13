@@ -5,6 +5,18 @@
  */
 
 import { storage } from "../utils/storage";
+import { db } from "../firebase";
+import {
+  doc,
+  setDoc,
+  deleteDoc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 
 const API_BASE = (import.meta.env.VITE_SHORTENER_API_URL || "")
   .trim()
@@ -39,109 +51,133 @@ function cleanStoredLinks(links) {
 
 export const api = {
   async getLinks(user) {
-    // If guest or demo mode
-    if (!user || user.isDemo) {
-      const stored = storage.getDemoLinks();
-      const cleaned = cleanStoredLinks(stored || []);
-      if (stored && cleaned.length !== stored.length) {
-        storage.setDemoLinks(cleaned);
+    // If real Firebase user and db is connected
+    if (user && !user.isDemo && db && !API_BASE) {
+      try {
+        const q = query(collection(db, "links"), where("ownerId", "==", user.uid));
+        const snap = await getDocs(q);
+        const userLinks = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            shortUrl: `https://go.consolaktif.com.tr/${data.slug}`,
+          };
+        });
+        if (userLinks.length > 0) {
+          return userLinks;
+        }
+      } catch (err) {
+        console.warn("Firestore query error:", err);
       }
-      return cleaned;
     }
 
-    // Real Firebase user
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`${API_BASE}/api/links`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await readResponse(res);
-      return data.links || [];
-    } catch (err) {
-      console.warn("Backend API unavailable, using local library:", err.message);
-      const stored = storage.getDemoLinks();
-      return cleanStoredLinks(stored || []);
+    // If backend API URL is configured
+    if (user && !user.isDemo && API_BASE) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${API_BASE}/api/links`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await readResponse(res);
+        return data.links || [];
+      } catch (err) {
+        console.warn("Backend API unavailable, using local library:", err.message);
+      }
     }
+
+    // Fallback to local storage
+    const stored = storage.getDemoLinks();
+    const cleaned = cleanStoredLinks(stored || []);
+    if (stored && cleaned.length !== stored.length) {
+      storage.setDemoLinks(cleaned);
+    }
+    return cleaned;
   },
 
   async createLink(user, payload) {
-    if (!user || user.isDemo) {
-      const existing = cleanStoredLinks(storage.getDemoLinks() || []);
-      const isLocal =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1");
-      const host = isLocal ? window.location.host : "go.consolaktif.com.tr";
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const host = "go.consolaktif.com.tr";
 
-      let slug = (payload.slug || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, "");
-      if (!slug) {
-        slug = Math.random().toString(36).substring(2, 8);
-      }
-
-      // Check if custom slug is already used
-      if (existing.some((l) => l.slug?.toLowerCase() === slug)) {
-        throw new Error(
-          `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`
-        );
-      }
-
-      const shortUrl = `${isLocal ? window.location.origin : "https://" + host}/${slug}`;
-
-      const newLink = {
-        id: `${host}__${slug}`,
-        domain: host,
-        slug,
-        title: payload.title || new URL(payload.destination).hostname,
-        tag: payload.tag || "",
-        destination: payload.destination,
-        shortUrl,
-        status: "active",
-        clickCount: 0,
-        password: payload.password || "",
-        expiresAt: payload.expiresAt || "",
-        createdAt: { seconds: Math.floor(Date.now() / 1000) },
-        updatedAt: { seconds: Math.floor(Date.now() / 1000) },
-      };
-
-      const updated = [newLink, ...existing];
-      storage.setDemoLinks(updated);
-      return newLink;
+    let slug = (payload.slug || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "");
+    if (!slug) {
+      slug = Math.random().toString(36).substring(2, 8);
     }
 
-    const token = await user.getIdToken();
-    const res = await fetch(`${API_BASE}/api/links`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const data = await readResponse(res);
-    return data.link;
+    const existing = cleanStoredLinks(storage.getDemoLinks() || []);
+    if (existing.some((l) => l.slug?.toLowerCase() === slug)) {
+      throw new Error(
+        `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`
+      );
+    }
+
+    const shortUrl = `https://${host}/${slug}`;
+
+    const newLink = {
+      id: `${host}__${slug}`,
+      domain: host,
+      slug,
+      title: payload.title || new URL(payload.destination).hostname,
+      tag: payload.tag || "",
+      destination: payload.destination,
+      shortUrl,
+      status: "active",
+      clickCount: 0,
+      password: payload.password || "",
+      expiresAt: payload.expiresAt || "",
+      createdAt: { seconds: Math.floor(Date.now() / 1000) },
+      updatedAt: { seconds: Math.floor(Date.now() / 1000) },
+    };
+
+    // Save to Firestore so it works everywhere for real
+    if (db) {
+      try {
+        await setDoc(doc(db, "links", `${host}__${slug}`), {
+          ownerId: user?.uid || "guest",
+          domain: host,
+          slug,
+          title: newLink.title,
+          tag: newLink.tag || "",
+          destination: newLink.destination,
+          status: "active",
+          clickCount: 0,
+          password: newLink.password || "",
+          expiresAt: newLink.expiresAt || "",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Firestore sync warning:", err);
+      }
+    }
+
+    const updated = [newLink, ...existing];
+    storage.setDemoLinks(updated);
+    return newLink;
   },
 
   async deleteLink(user, linkId) {
-    if (!user || user.isDemo) {
-      const existing = cleanStoredLinks(storage.getDemoLinks() || []);
-      const updated = existing.filter((l) => l.id !== linkId);
-      storage.setDemoLinks(updated);
-      return { success: true };
+    const existing = cleanStoredLinks(storage.getDemoLinks() || []);
+    const updated = existing.filter((l) => l.id !== linkId);
+    storage.setDemoLinks(updated);
+
+    // Delete from Firestore
+    if (db) {
+      try {
+        const slug = linkId.includes("__") ? linkId.split("__").pop() : linkId;
+        await deleteDoc(doc(db, "links", `go.consolaktif.com.tr__${slug}`));
+      } catch (err) {
+        console.warn("Firestore delete warning:", err);
+      }
     }
 
-    const token = await user.getIdToken();
-    const res = await fetch(`${API_BASE}/api/links`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id: linkId }),
-    });
-    return await readResponse(res);
+    return { success: true };
   },
 
   async updateLinkStatus(user, linkId, status) {

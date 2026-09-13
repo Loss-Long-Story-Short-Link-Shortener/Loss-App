@@ -84,7 +84,7 @@ export function OverviewPage({
   };
 
   const getWorkingUrl = (slug) => {
-    return isLocal ? `${window.location.origin}/${slug}` : `https://go.consolaktif.com.tr/${slug}`;
+    return `https://go.consolaktif.com.tr/${slug}`;
   };
 
   const handleQuickShorten = async (e) => {
