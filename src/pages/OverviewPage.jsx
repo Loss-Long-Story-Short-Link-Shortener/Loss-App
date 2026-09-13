@@ -220,6 +220,7 @@ export function OverviewPage({
             </div>
           ) : (
             <input
+              id="chatgpt-main-input"
               type="text"
               className="chatgpt-prompt-input"
               placeholder="Kısaltılacak bağlantıyı buraya yapıştırın..."

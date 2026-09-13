@@ -103,13 +103,26 @@ export default function App() {
     );
   }
 
+  const handleStartNewShorten = () => {
+    setCreateModalOpen(false);
+    setActivePage("Overview");
+    setTimeout(() => {
+      const el = document.getElementById("chatgpt-main-input");
+      if (el) {
+        el.focus();
+        el.select();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 60);
+  };
+
   return (
     <div className="app-shell">
       {/* Sidebar */}
       <Sidebar
         activePage={activePage}
         onSelectPage={setActivePage}
-        onOpenCreateModal={() => setCreateModalOpen(true)}
+        onOpenCreateModal={handleStartNewShorten}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         collapsed={sidebarCollapsed}
@@ -120,14 +133,14 @@ export default function App() {
       <div className="main-area">
         <Topbar
           onOpenMobile={() => setMobileOpen(true)}
-          onOpenCreateModal={() => setCreateModalOpen(true)}
+          onOpenCreateModal={handleStartNewShorten}
           onSelectPage={setActivePage}
         />
 
         <main className="page-container">
           {activePage === "Overview" && (
             <OverviewPage
-              onOpenCreateModal={() => setCreateModalOpen(true)}
+              onOpenCreateModal={handleStartNewShorten}
               onOpenQr={(link) => setQrModalLink(link)}
               onDeleteRequest={(link) => setDeleteModalLink(link)}
               onNavigate={setActivePage}
