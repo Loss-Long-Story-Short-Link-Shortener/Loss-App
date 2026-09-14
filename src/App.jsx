@@ -3,7 +3,7 @@ import { Link2 } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Topbar } from "./components/layout/Topbar";
-import { Footer } from "./components/layout/Footer";
+
 import { ToastContainer } from "./components/common/Toast";
 
 // Pages
@@ -166,7 +166,6 @@ export default function App() {
           {activePage === "Settings" && <SettingsPage />}
         </main>
 
-        <Footer />
       </div>
 
       {/* Modals */}

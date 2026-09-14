@@ -48,12 +48,6 @@ export function OverviewPage({
   }, [links, createdLink]);
 
   const handleDeleteLink = (link) => {
-    if (
-      createdLink &&
-      (createdLink.id === link.id || createdLink.slug === link.slug)
-    ) {
-      setCreatedLink(null);
-    }
     onDeleteRequest(link);
   };
 
