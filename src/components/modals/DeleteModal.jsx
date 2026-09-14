@@ -12,7 +12,7 @@ export function DeleteModal({ isOpen, onClose, link }) {
   const handleDelete = async () => {
     setBusy(true);
     try {
-      await removeLink(link.id);
+      await removeLink(link.id, link);
       onClose();
     } catch {
       // Handled in context

@@ -11,7 +11,6 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { LinksPage } from "./pages/LinksPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { QrStudioPage } from "./pages/QrStudioPage";
-import { DomainsPage } from "./pages/DomainsPage";
 import { BillingPage } from "./pages/BillingPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
@@ -20,7 +19,6 @@ import { CreateLinkModal } from "./components/modals/CreateLinkModal";
 import { QrDetailModal } from "./components/modals/QrDetailModal";
 import { UpgradeModal } from "./components/modals/UpgradeModal";
 import { DeleteModal } from "./components/modals/DeleteModal";
-import { AddDomainModal } from "./components/modals/AddDomainModal";
 import { AuthModal } from "./components/modals/AuthModal";
 import { RedirectPage } from "./pages/RedirectPage";
 
@@ -28,8 +26,18 @@ export default function App() {
   const { authLoading, authModalOpen, setAuthModalOpen, authModalReason } = useAuth();
 
   // Slug route detection for client-side redirection
+  // Disabled on localhost (dev) — the Vercel API functions aren't available
+  // so the fetch returns Vite's index.html (200) which falsely triggers
+  // the "password-protected" state.
   const [redirectSlug, setRedirectSlug] = useState(() => {
     if (typeof window !== "undefined") {
+      const isLocalDev =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname.startsWith("192.168.");
+
+      if (isLocalDev) return null; // never intercept slugs in local dev
+
       const path = window.location.pathname.replace(/^\/+/, "").split("/")[0];
       const ignored = ["", "login", "register", "admin", "api", "app"];
       if (path && !ignored.includes(path.toLowerCase())) {
@@ -63,7 +71,6 @@ export default function App() {
   // Modal States
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [qrModalLink, setQrModalLink] = useState(null);
   const [deleteModalLink, setDeleteModalLink] = useState(null);
 
@@ -153,12 +160,6 @@ export default function App() {
             />
           )}
 
-          {activePage === "Domains" && (
-            <DomainsPage
-              onOpenAddDomainModal={() => setDomainModalOpen(true)}
-              onOpenUpgradeModal={() => setUpgradeModalOpen(true)}
-            />
-          )}
 
           {activePage === "Billing" && <BillingPage />}
 
@@ -195,10 +196,6 @@ export default function App() {
         link={deleteModalLink}
       />
 
-      <AddDomainModal
-        isOpen={domainModalOpen}
-        onClose={() => setDomainModalOpen(false)}
-      />
 
       <AuthModal
         isOpen={authModalOpen}

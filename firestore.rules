@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Links: only the owner may read / write their own links.
+    // Public redirect reads go through the Admin SDK (server-side)
+    // and are NOT subject to these client rules.
+    match /links/{linkId} {
+      allow read:   if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.slug is string
+                    && request.resource.data.destination is string;
+
+      allow update: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+
+      allow delete: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Click sub-collections under links — deny client access entirely.
+    // Click tracking happens via Admin SDK on the server.
+    match /links/{linkId}/clicks/{clickId} {
+      allow read, write: if false;
+    }
+
+    // Health-check collection (server-side only)
+    match /_health/{doc} {
+      allow read, write: if false;
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

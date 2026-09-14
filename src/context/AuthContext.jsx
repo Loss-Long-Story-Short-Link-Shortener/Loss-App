@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import {
   auth,
@@ -24,9 +25,9 @@ export function AuthProvider({ children }) {
   const [authModalReason, setAuthModalReason] = useState("");
 
   const [theme, setThemeState] = useState(() => {
-    const saved = window.localStorage.getItem("lss_theme");
+    const saved = storage.getTheme();
     if (!saved || saved === "light") {
-      window.localStorage.setItem("lss_theme", "dark");
+      storage.setTheme("dark");
       return "dark";
     }
     return saved;
@@ -140,12 +141,13 @@ export function AuthProvider({ children }) {
   );
 
   const removeLink = useCallback(
-    async (linkId) => {
-      await api.deleteLink(user, linkId);
+    async (linkId, linkObj) => {
+      const targetLink = linkObj || links.find((l) => l.id === linkId);
+      await api.deleteLink(user, linkId, targetLink);
       setLinks((prev) => prev.filter((l) => l.id !== linkId));
       showToast("Bağlantı silindi", "info");
     },
-    [user, showToast]
+    [user, links, showToast]
   );
 
   const toggleLinkStatus = useCallback(
@@ -175,6 +177,21 @@ export function AuthProvider({ children }) {
     setAuthModalOpen(false);
     showToast("Demo çalışma alanına giriş yapıldı ✦", "success");
   }, [showToast]);
+
+  const updateUserProfile = useCallback(
+    async ({ displayName }) => {
+      if (auth?.currentUser) {
+        try {
+          await updateProfile(auth.currentUser, { displayName });
+        } catch (err) {
+          console.warn("Profile update warning:", err);
+        }
+      }
+      setUser((prev) => (prev ? { ...prev, displayName } : prev));
+      showToast("Profil bilgileri kaydedildi ✦", "success");
+    },
+    [showToast]
+  );
 
   const signOutUser = useCallback(async () => {
     storage.setDemoUser(false);
@@ -218,6 +235,7 @@ export function AuthProvider({ children }) {
     showToast,
     dismissToast,
     loginWithDemo,
+    updateUserProfile,
     signOutUser,
   };
 

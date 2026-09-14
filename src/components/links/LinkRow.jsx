@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   QrCode,
   Copy,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { useAuth } from "../../context/AuthContext";
+import { useClickOutside } from "../../hooks/useClickOutside";
 
 export function LinkRow({
   link,
@@ -21,6 +22,8 @@ export function LinkRow({
   const { toggleLinkStatus, showToast } = useAuth();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const menuRef = useClickOutside(closeMenu, menuOpen);
 
   const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
 
@@ -122,6 +125,7 @@ export function LinkRow({
 
         {menuOpen && (
           <div
+            ref={menuRef}
             style={{
               position: "absolute",
               right: 0,
@@ -137,7 +141,6 @@ export function LinkRow({
               flexDirection: "column",
               gap: "2px",
             }}
-            onMouseLeave={() => setMenuOpen(false)}
           >
             <button
               className="btn btn-subtle btn-sm"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Menu,
   Sun,
@@ -6,16 +6,25 @@ import {
   LogIn,
   LogOut,
   CreditCard,
+  Settings2,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useClickOutside } from "../../hooks/useClickOutside";
 
 export function Topbar({
   onOpenMobile,
   onOpenCreateModal,
   onSelectPage,
 }) {
-  const { user, theme, setTheme, requireAuth, signOutUser } = useAuth();
+  const { user, currentTier, theme, setTheme, requireAuth, signOutUser } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
+  const closeProfile = useCallback(() => setProfileOpen(false), []);
+  const profileRef = useClickOutside(closeProfile, profileOpen);
+
+  const userInitials = (user?.displayName || user?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <header className="topbar">
@@ -44,62 +53,70 @@ export function Topbar({
         {user ? (
           <div style={{ position: "relative" }}>
             <button
-              className="user-avatar-circle"
-              style={{ width: "30px", height: "30px", cursor: "pointer", border: "none" }}
+              className={`topbar-avatar-btn ${profileOpen ? "active" : ""}`}
               onClick={() => setProfileOpen((prev) => !prev)}
+              aria-label="Profil Menüsü"
+              title={user.displayName || user.email}
             >
-              {(user.displayName || user.email || "U").slice(0, 2).toUpperCase()}
+              <span className="topbar-avatar-text">{userInitials}</span>
             </button>
 
             {profileOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 8px)",
-                  right: 0,
-                  width: "200px",
-                  background: "var(--bg-surface-elevated)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-sm)",
-                  boxShadow: "var(--shadow-lg)",
-                  padding: "6px",
-                  zIndex: 50,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "2px",
-                }}
-                onMouseLeave={() => setProfileOpen(false)}
-              >
-                <div style={{ padding: "6px 8px 8px", borderBottom: "1px solid var(--border-subtle)", marginBottom: "4px" }}>
-                  <strong style={{ display: "block", fontSize: "12px", color: "var(--text-primary)" }}>
-                    {user.displayName || "Kullanıcı"}
-                  </strong>
-                  <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {user.email}
+              <div ref={profileRef} className="topbar-profile-dropdown">
+                {/* Profile Header */}
+                <div className="dropdown-user-header">
+                  <div className="dropdown-user-avatar">{userInitials}</div>
+                  <div className="dropdown-user-details">
+                    <span className="dropdown-user-name">
+                      {user.displayName || "Kullanıcı"}
+                    </span>
+                    <span className="dropdown-user-email" title={user.email}>
+                      {user.email}
+                    </span>
+                  </div>
+                  <span className="dropdown-tier-chip">
+                    {currentTier?.toUpperCase() || "FREE"}
                   </span>
                 </div>
 
-                <button
-                  className="btn btn-subtle btn-sm"
-                  style={{ justifyContent: "flex-start" }}
-                  onClick={() => {
-                    onSelectPage("Billing");
-                    setProfileOpen(false);
-                  }}
-                >
-                  <CreditCard size={13} /> Paketler
-                </button>
+                <div className="dropdown-divider" />
 
+                {/* Navigation Items */}
+                <div className="dropdown-items-group">
+                  <button
+                    className="dropdown-menu-item"
+                    onClick={() => {
+                      onSelectPage("Settings");
+                      setProfileOpen(false);
+                    }}
+                  >
+                    <Settings2 size={15} />
+                    <span>Ayarlar & Profil</span>
+                  </button>
+
+                  <button
+                    className="dropdown-menu-item"
+                    onClick={() => {
+                      onSelectPage("Billing");
+                      setProfileOpen(false);
+                    }}
+                  >
+                    <CreditCard size={15} />
+                    <span>Paketler & Plan</span>
+                  </button>
+                </div>
+
+                <div className="dropdown-divider" />
 
                 <button
-                  className="btn btn-subtle btn-sm"
-                  style={{ justifyContent: "flex-start", color: "var(--danger)" }}
+                  className="dropdown-menu-item danger"
                   onClick={() => {
                     signOutUser();
                     setProfileOpen(false);
                   }}
                 >
-                  <LogOut size={13} /> Çıkış Yap
+                  <LogOut size={15} />
+                  <span>Çıkış Yap</span>
                 </button>
               </div>
             )}

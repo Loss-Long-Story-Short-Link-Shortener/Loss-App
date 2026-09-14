@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import {
   allowCors,
@@ -7,6 +7,8 @@ import {
   requireUser,
   sendJson,
 } from "./_firebase.js";
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function createSlug() {
   return randomBytes(4).toString("hex").slice(0, 6);
@@ -22,6 +24,90 @@ function normalizeSlug(value) {
     .slice(0, 48);
 }
 
+/**
+ * Hash a password with SHA-256 + random salt.
+ * Stored as "salt:hash" so we can verify later.
+ */
+function hashPassword(plaintext) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = createHash("sha256")
+    .update(salt + plaintext)
+    .digest("hex");
+  return `${salt}:${hash}`;
+}
+
+/**
+ * Verify a plaintext password against a "salt:hash" stored value.
+ */
+export function verifyPassword(plaintext, stored) {
+  if (!stored || !stored.includes(":")) return false;
+  const [salt, expectedHash] = stored.split(":");
+  const hash = createHash("sha256")
+    .update(salt + plaintext)
+    .digest("hex");
+  return hash === expectedHash;
+}
+
+// Domains that should never be used as redirect destinations
+const BLOCKED_DESTINATION_HOSTS = new Set([
+  "loss.tr",
+  "go.loss.tr",
+  "loss.consolaktif.com.tr",
+  "go.consolaktif.com.tr",
+]);
+
+// Reserved slugs that cannot be claimed
+const RESERVED_SLUGS = new Set([
+  "api",
+  "app",
+  "admin",
+  "login",
+  "register",
+  "dashboard",
+  "settings",
+  "billing",
+  "health",
+  "ping",
+  "_health",
+]);
+
+// Tier limits (mirrored from frontend constants/tiers.js)
+const TIER_LIMITS = {
+  free: 50,
+  pro: 1500,
+  enterprise: 50000,
+};
+
+function getCanonicalHost() {
+  return (process.env.SHORT_LINK_HOST || "loss.tr").trim().toLowerCase();
+}
+
+function getBaseUrl(requestHost) {
+  const host =
+    requestHost && !requestHost.includes("localhost")
+      ? requestHost
+      : getCanonicalHost();
+  const configuredBase = (
+    process.env.SHORT_LINK_BASE_URL || "https://loss.tr"
+  ).replace(/\/$/, "");
+  return requestHost && !requestHost.includes("localhost")
+    ? `https://${host}`
+    : configuredBase;
+}
+
+function getRequestHost(request) {
+  return (
+    request.headers["x-forwarded-host"] ||
+    request.headers.host ||
+    ""
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+}
+
+// ─── Handler ────────────────────────────────────────────────────────────────
+
 export default async function handler(request, response) {
   allowCors(response);
   if (request.method === "OPTIONS") return response.status(204).end();
@@ -32,47 +118,34 @@ export default async function handler(request, response) {
   try {
     const user = await requireUser(request);
     const { db } = await getFirebaseAdmin();
-    
-    const requestHost = (
-      request.headers["x-forwarded-host"] ||
-      request.headers.host ||
-      ""
-    ).split(",")[0].trim().toLowerCase();
+    const host = getCanonicalHost();
+    const requestHost = getRequestHost(request);
+    const baseUrl = getBaseUrl(requestHost);
 
-    const host = requestHost && !requestHost.includes("localhost")
-      ? requestHost
-      : (process.env.SHORT_LINK_HOST || "loss.tr").trim().toLowerCase();
-
-    const baseUrl = requestHost && !requestHost.includes("localhost")
-      ? `https://${requestHost}`
-      : (process.env.SHORT_LINK_BASE_URL || "https://loss.tr").replace(/\/$/, "");
-
-    // 1. GET: List user's links
+    // ── GET: List user's links ─────────────────────────────────────────
     if (request.method === "GET") {
       const snapshot = await db
         .collection("links")
         .where("ownerId", "==", user.uid)
-        .limit(100)
+        .orderBy("createdAt", "desc")
+        .limit(200)
         .get();
 
-      const userLinks = snapshot.docs
-        .map((item) => {
-          const data = item.data();
-          return {
-            id: item.id,
-            ...data,
-            shortUrl: `${baseUrl}/${data.slug}`,
-          };
-        })
-        .sort(
-          (first, second) =>
-            (second.createdAt?.toMillis?.() || 0) -
-            (first.createdAt?.toMillis?.() || 0),
-        );
+      const userLinks = snapshot.docs.map((item) => {
+        const data = item.data();
+        return {
+          id: item.id,
+          ...data,
+          // Never expose the raw password hash to the client
+          password: data.password ? "••••••" : "",
+          shortUrl: `${baseUrl}/${data.slug}`,
+        };
+      });
+
       return sendJson(response, 200, { links: userLinks });
     }
 
-    // 2. DELETE: Delete a link
+    // ── DELETE: Delete a link ──────────────────────────────────────────
     if (request.method === "DELETE") {
       const { id, slug } = request.body || request.query || {};
       const targetId = id || (slug ? `${host}__${slug}` : null);
@@ -94,9 +167,10 @@ export default async function handler(request, response) {
       return sendJson(response, 200, { success: true, id: targetId });
     }
 
-    // 3. PATCH: Update status, title, or tags
+    // ── PATCH: Update status, title, tag, password, expiresAt ─────────
     if (request.method === "PATCH") {
-      const { id, slug, status, title, tag, password, expiresAt } = request.body || {};
+      const { id, slug, status, title, tag, password, expiresAt } =
+        request.body || {};
       const targetId = id || (slug ? `${host}__${slug}` : null);
       if (!targetId) {
         return sendJson(response, 400, { error: "Link ID or slug is required" });
@@ -116,23 +190,31 @@ export default async function handler(request, response) {
       if (status !== undefined) updates.status = status;
       if (title !== undefined) updates.title = title;
       if (tag !== undefined) updates.tag = tag;
-      if (password !== undefined) updates.password = password;
+      // Hash new password; empty string removes protection
+      if (password !== undefined) {
+        updates.password = password ? hashPassword(password) : "";
+      }
       if (expiresAt !== undefined) updates.expiresAt = expiresAt;
 
       await linkRef.update(updates);
       const updatedSnapshot = await linkRef.get();
+      const updatedData = updatedSnapshot.data();
+
       return sendJson(response, 200, {
         link: {
           id: targetId,
-          ...updatedSnapshot.data(),
-          shortUrl: `${baseUrl}/${updatedSnapshot.data().slug}`,
+          ...updatedData,
+          password: updatedData.password ? "••••••" : "",
+          shortUrl: `${baseUrl}/${updatedData.slug}`,
         },
       });
     }
 
-    // 4. POST: Create a new link
+    // ── POST: Create a new link ────────────────────────────────────────
     const { destination, slug: requestedSlug, title, tag, password, expiresAt } =
       request.body || {};
+
+    // Validate destination URL
     let destinationUrl;
     try {
       destinationUrl = new URL(destination);
@@ -148,6 +230,14 @@ export default async function handler(request, response) {
       });
     }
 
+    // Block self-referencing redirects (open redirect prevention)
+    if (BLOCKED_DESTINATION_HOSTS.has(destinationUrl.hostname.toLowerCase())) {
+      return sendJson(response, 400, {
+        error: "Cannot create a short link pointing to this domain",
+      });
+    }
+
+    // Validate and normalize slug
     const slug = normalizeSlug(requestedSlug) || createSlug();
     if (slug.length < 3) {
       return sendJson(response, 400, {
@@ -155,6 +245,30 @@ export default async function handler(request, response) {
       });
     }
 
+    if (RESERVED_SLUGS.has(slug)) {
+      return sendJson(response, 400, {
+        error: "This slug is reserved and cannot be used",
+      });
+    }
+
+    // ── Server-side link limit check ───────────────────────────────────
+    // Count the user's existing links
+    const countSnapshot = await db
+      .collection("links")
+      .where("ownerId", "==", user.uid)
+      .count()
+      .get();
+    const currentCount = countSnapshot.data().count || 0;
+
+    // Default to free tier limit; a real billing system would look up the user's tier
+    const maxLinks = TIER_LIMITS.free;
+    if (currentCount >= maxLinks) {
+      return sendJson(response, 429, {
+        error: `Plan kotanıza (${maxLinks} link) ulaştınız. Lütfen paketinizi yükseltin.`,
+      });
+    }
+
+    // Check slug uniqueness
     const id = `${host}__${slug}`;
     const linkRef = db.collection("links").doc(id);
     const existing = await linkRef.get();
@@ -168,7 +282,7 @@ export default async function handler(request, response) {
       slug,
       title: title || destinationUrl.hostname,
       tag: tag || "",
-      password: password || "",
+      password: password ? hashPassword(password) : "",
       expiresAt: expiresAt || "",
       destination: destinationUrl.toString(),
       status: "active",
@@ -177,12 +291,12 @@ export default async function handler(request, response) {
       updatedAt: FieldValue.serverTimestamp(),
     };
     await linkRef.set(link);
-    const savedLink = await linkRef.get();
 
     return sendJson(response, 201, {
       link: {
         id,
-        ...savedLink.data(),
+        ...link,
+        password: link.password ? "••••••" : "",
         shortUrl: `${baseUrl}/${slug}`,
       },
     });

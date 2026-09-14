@@ -3,7 +3,6 @@ import {
   Plus,
   Settings,
   SlidersHorizontal,
-  Globe2,
   CreditCard,
   BarChart3,
   LogIn,
@@ -25,6 +24,12 @@ export function Sidebar({
   onToggleCollapse,
 }) {
   const { user, links, requireAuth, signOutUser } = useAuth();
+
+  const userInitials = (
+    user?.displayName
+      ? user.displayName.trim().split(/\s+/).map((n) => n[0]).join("").slice(0, 2)
+      : (user?.email || "U").slice(0, 2)
+  ).toUpperCase();
 
   const handleNavClick = (pageId, requiresLogin = false) => {
     if (requiresLogin && !user) {
@@ -122,20 +127,10 @@ export function Sidebar({
           <button
             className={`sidebar-nav-btn ${activePage === "Analytics" ? "active" : ""}`}
             onClick={() => handleNavClick("Analytics", true)}
-            title="Analitik"
+            title="Analizler"
           >
             <BarChart3 size={16} />
-            {!collapsed && <span>Analitik</span>}
-            {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
-          </button>
-
-          <button
-            className={`sidebar-nav-btn ${activePage === "Domains" ? "active" : ""}`}
-            onClick={() => handleNavClick("Domains", true)}
-            title="Özel Domain"
-          >
-            <Globe2 size={16} />
-            {!collapsed && <span>Özel Domain</span>}
+            {!collapsed && <span>Analizler</span>}
             {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
           </button>
 
@@ -154,37 +149,39 @@ export function Sidebar({
       {/* Bottom bar: User Profile or Login CTA */}
       <div className="sidebar-bottom-bar">
         {user ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: collapsed ? "center" : "space-between",
-              width: "100%",
-            }}
-          >
+          <div className="sidebar-user-card">
             <div
-              style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden", cursor: "pointer" }}
+              className="sidebar-user-info-btn"
               onClick={() => handleNavClick("Settings")}
-              title={user.displayName || user.email}
+              title="Profil ve Ayarlar"
             >
-              <div className="user-avatar-circle" style={{ width: "28px", height: "28px", fontSize: "11px" }}>
-                {(user.displayName || user.email || "U").slice(0, 2).toUpperCase()}
+              <div className="sidebar-user-avatar">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Avatar" className="sidebar-user-avatar-img" />
+                ) : (
+                  userInitials
+                )}
               </div>
               {!collapsed && (
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {user.displayName || user.email?.split("@")[0]}
-                </span>
+                <div className="sidebar-user-texts">
+                  <span className="sidebar-user-name">
+                    {user.displayName || user.email?.split("@")[0]}
+                  </span>
+                  <span className="sidebar-user-email">
+                    {user.email || "Hesap"}
+                  </span>
+                </div>
               )}
             </div>
 
             {!collapsed && (
               <button
-                className="icon-btn"
-                style={{ width: "26px", height: "26px" }}
+                className="sidebar-logout-btn"
                 onClick={signOutUser}
                 title="Çıkış Yap"
+                aria-label="Çıkış Yap"
               >
-                <LogOut size={13} />
+                <LogOut size={14} />
               </button>
             )}
           </div>

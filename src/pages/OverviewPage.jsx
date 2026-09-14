@@ -6,7 +6,7 @@ import {
   Copy,
   Check,
   QrCode,
-  Sliders,
+  SlidersHorizontal,
   ExternalLink,
   Clock,
   Trash2,
@@ -57,17 +57,9 @@ export function OverviewPage({
     onDeleteRequest(link);
   };
 
-  // Inline creation options
+  // Inline creation options - only custom link slug
   const [showCustomSlug, setShowCustomSlug] = useState(false);
   const [customSlug, setCustomSlug] = useState("");
-
-  const [showUtm, setShowUtm] = useState(false);
-  const [utmSource, setUtmSource] = useState("");
-  const [utmMedium, setUtmMedium] = useState("");
-  const [utmCampaign, setUtmCampaign] = useState("");
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [linkPassword, setLinkPassword] = useState("");
 
   const isLocal =
     typeof window !== "undefined" &&
@@ -110,37 +102,23 @@ export function OverviewPage({
       return;
     }
 
-    let destination = normalizeUrl(raw);
-
-    // Append UTM if provided
-    if (utmSource.trim() || utmMedium.trim() || utmCampaign.trim()) {
-      try {
-        const u = new URL(destination);
-        if (utmSource.trim()) u.searchParams.set("utm_source", utmSource.trim());
-        if (utmMedium.trim()) u.searchParams.set("utm_medium", utmMedium.trim());
-        if (utmCampaign.trim()) u.searchParams.set("utm_campaign", utmCampaign.trim());
-        destination = u.toString();
-      } catch {}
-    }
+    const destination = normalizeUrl(raw);
 
     setBusy(true);
     setFavErr(false);
     setShowInlineQr(false);
 
     try {
-      await new Promise((r) => setTimeout(r, 460));
+      await new Promise((r) => setTimeout(r, 350));
       const payload = {
         destination,
         slug: customSlug.trim() || undefined,
-        password: linkPassword.trim() || undefined,
       };
 
       const newLink = await addLink(payload);
       setInputUrl("");
       setCustomSlug("");
       setShowCustomSlug(false);
-      setShowUtm(false);
-      setShowPassword(false);
       setCreatedLink(newLink);
 
       // Auto-copy the working short link
@@ -150,7 +128,7 @@ export function OverviewPage({
         setCopiedId(newLink.id);
         showToast("Kısa link hazır ve panoya kopyalandı ✦", "success");
         setTimeout(() => setCopiedId(null), 3000);
-      } catch {}
+      } catch { }
     } catch (err) {
       showToast(err.message || "Link kısaltılamadı", "error");
     } finally {
@@ -200,10 +178,10 @@ export function OverviewPage({
           Bir bağlantı yapıştırın ve anında kısaltın. Kayıt olmadan hemen kullanabilirsiniz.
         </p>
 
-        {/* Floating Prompt Box */}
+        {/* Unified Integrated Input Card */}
         <form
           onSubmit={handleQuickShorten}
-          className={`lss-prompt-box ${busy ? "compressing" : ""}`}
+          className={`lss-unified-prompt-card ${busy ? "compressing" : ""}`}
         >
           {busy ? (
             <div className="compressing-text-track">
@@ -211,190 +189,114 @@ export function OverviewPage({
               <span className="compressing-label">Bağlantı optimize ediliyor ve kısaltılıyor...</span>
             </div>
           ) : (
-            <input
-              id="lss-main-input"
-              type="text"
-              className="lss-prompt-input"
-              placeholder="Kısaltılacak bağlantıyı buraya yapıştırın..."
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              autoFocus
-              disabled={busy}
-            />
-          )}
+            <>
+              <div className="lss-prompt-main-row">
+                <div className="lss-input-lead-icon" title="Bağlantı">
+                  <Link2 size={18} />
+                </div>
 
-          <button
-            type="submit"
-            className={`lss-send-btn ${inputUrl.trim() && !busy ? "active" : ""}`}
-            disabled={busy || !inputUrl.trim()}
-            aria-label="Kısalt"
-          >
-            {busy ? (
-              <Loader2 size={16} className="spin" />
-            ) : (
-              <ArrowUp size={18} strokeWidth={2.6} />
-            )}
-          </button>
-        </form>
+                <input
+                  id="lss-main-input"
+                  type="text"
+                  className="lss-prompt-input"
+                  placeholder="Kısaltılacak bağlantıyı buraya yapıştırın..."
+                  value={inputUrl}
+                  onChange={(e) => setInputUrl(e.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
+                  disabled={busy}
+                  autoFocus
+                />
 
-        {/* Inline Advanced Options Expansion Panel */}
-        {(showCustomSlug || showUtm || showPassword) && (
-          <div className="inline-options-panel">
-            {showCustomSlug && (
-              <div>
-                <div className="inline-panel-header" style={{ marginBottom: "6px" }}>
-                  <span className="inline-panel-title">
-                    <Sliders size={13} /> Özel Bağlantı Adı (Slug)
-                  </span>
+                {inputUrl && (
                   <button
                     type="button"
-                    className="linear-dismiss-btn"
-                    onClick={() => {
-                      setShowCustomSlug(false);
-                      setCustomSlug("");
-                    }}
+                    className="lss-inline-clear-btn"
+                    onClick={() => setInputUrl("")}
+                    title="Temizle"
                   >
-                    <X size={11} /> İptal
+                    <X size={14} />
+                  </button>
+                )}
+
+                {/* Integrated Quick Action Tools inside the bar */}
+                <div className="lss-integrated-tools">
+                  <button
+                    type="button"
+                    className={`lss-tool-pill-btn ${showCustomSlug ? "active" : ""}`}
+                    onClick={() => setShowCustomSlug((prev) => !prev)}
+                    title="Özel bağlantı belirle (isteğe bağlı)"
+                  >
+                    <SlidersHorizontal size={14} />
+                    <span className="tool-pill-text">Özel link</span>
+                    {customSlug && <span className="tool-active-dot" />}
                   </button>
                 </div>
-                <div className="inline-slug-group">
-                  <span className="inline-domain-label">loss.tr /</span>
+
+                <button
+                  type="submit"
+                  className={`lss-send-btn ${inputUrl.trim() && !busy ? "active" : ""}`}
+                  disabled={busy || !inputUrl.trim()}
+                  aria-label="Kısalt"
+                >
+                  {busy ? (
+                    <Loader2 size={16} className="spin" />
+                  ) : (
+                    <ArrowUp size={18} strokeWidth={2.6} />
+                  )}
+                </button>
+              </div>
+
+              {/* Integrated Inline Custom Slug Row */}
+              {showCustomSlug && (
+                <div className="lss-integrated-subrow lss-subrow-slug">
+                  <div className="lss-slug-prefix">
+                    <span className="lss-prefix-domain">loss.tr /</span>
+                  </div>
                   <input
                     type="text"
-                    className="inline-slug-input"
-                    placeholder="ozel-adiniz (ör: kampanya-2026)"
+                    className="lss-slug-inline-input"
+                    placeholder="istediğiniz özel ad (ör: kampanya)"
                     value={customSlug}
                     onChange={(e) =>
                       setCustomSlug(
                         e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "")
                       )
                     }
+                    autoComplete="off"
+                    spellCheck={false}
                     autoFocus
                   />
-                </div>
-              </div>
-            )}
-
-            {showUtm && (
-              <div>
-                <div className="inline-panel-header" style={{ marginBottom: "6px" }}>
-                  <span className="inline-panel-title">
-                    <Sparkles size={13} /> UTM Kampanya Parametreleri
-                  </span>
+                  {customSlug && (
+                    <button
+                      type="button"
+                      className="lss-subrow-btn clear"
+                      onClick={() => setCustomSlug("")}
+                      title="Temizle"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className="linear-dismiss-btn"
+                    className="lss-subrow-btn close"
                     onClick={() => {
-                      setShowUtm(false);
-                      setUtmSource("");
-                      setUtmMedium("");
-                      setUtmCampaign("");
+                      setShowCustomSlug(false);
+                      setCustomSlug("");
                     }}
+                    title="Kapat"
                   >
-                    <X size={11} /> İptal
+                    <X size={13} />
                   </button>
                 </div>
-                <div className="inline-utm-grid">
-                  <div className="inline-utm-field">
-                    <span className="inline-utm-label">Kaynak (Source)</span>
-                    <input
-                      type="text"
-                      className="inline-utm-input"
-                      placeholder="twitter, google, bio"
-                      value={utmSource}
-                      onChange={(e) => setUtmSource(e.target.value)}
-                    />
-                  </div>
-                  <div className="inline-utm-field">
-                    <span className="inline-utm-label">Araç (Medium)</span>
-                    <input
-                      type="text"
-                      className="inline-utm-input"
-                      placeholder="cpc, banner, newsletter"
-                      value={utmMedium}
-                      onChange={(e) => setUtmMedium(e.target.value)}
-                    />
-                  </div>
-                  <div className="inline-utm-field">
-                    <span className="inline-utm-label">Kampanya Adı</span>
-                    <input
-                      type="text"
-                      className="inline-utm-input"
-                      placeholder="yaz-indirimi"
-                      value={utmCampaign}
-                      onChange={(e) => setUtmCampaign(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {showPassword && (
-              <div>
-                <div className="inline-panel-header" style={{ marginBottom: "6px" }}>
-                  <span className="inline-panel-title">
-                    <Lock size={13} /> Şifre Koruması
-                  </span>
-                  <button
-                    type="button"
-                    className="linear-dismiss-btn"
-                    onClick={() => {
-                      setShowPassword(false);
-                      setLinkPassword("");
-                    }}
-                  >
-                    <X size={11} /> İptal
-                  </button>
-                </div>
-                <div className="inline-slug-group">
-                  <Lock size={14} style={{ color: "var(--text-muted)", marginRight: "6px" }} />
-                  <input
-                    type="password"
-                    className="inline-slug-input"
-                    placeholder="Ziyaretçiler için kilit parolası..."
-                    value={linkPassword}
-                    onChange={(e) => setLinkPassword(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Quick Suggestion Pills */}
-        <div className="lss-pill-suggestions">
-          <button
-            type="button"
-            className={`lss-suggestion-btn ${showCustomSlug ? "active" : ""}`}
-            onClick={() => setShowCustomSlug((prev) => !prev)}
-          >
-            <Sliders size={13} />
-            <span>{showCustomSlug ? "✓ Özel Slug Açık" : "Özel Slug Belirle"}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`lss-suggestion-btn ${showUtm ? "active" : ""}`}
-            onClick={() => setShowUtm((prev) => !prev)}
-          >
-            <Sparkles size={13} />
-            <span>{showUtm ? "✓ UTM Açık" : "UTM Kampanyası Ekle"}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`lss-suggestion-btn ${showPassword ? "active" : ""}`}
-            onClick={() => {
-              if (requireAuth("Şifreli bağlantı oluşturmak için hesap gereklidir.")) {
-                setShowPassword((prev) => !prev);
-              }
-            }}
-          >
-            <Lock size={13} />
-            <span>{showPassword ? "✓ Şifre Aktif" : "Şifre Koruması"}</span>
-          </button>
-        </div>
+              )}
+            </>
+          )}
+        </form>
 
         {/* Linear/Raycast Style Result Card */}
         {createdLink && (

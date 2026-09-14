@@ -3,7 +3,6 @@ import {
   Link2,
   BarChart3,
   QrCode,
-  Globe2,
   CreditCard,
   Settings2,
 } from "lucide-react";
@@ -24,7 +23,7 @@ export const PRIMARY_NAV_ITEMS = [
   },
   {
     id: "Analytics",
-    label: "Analitik",
+    label: "Analizler",
     icon: BarChart3,
     description: "Tıklama, coğrafi kitle ve yönlendirme kaynaklarını ölçümleyin.",
   },
@@ -38,19 +37,12 @@ export const PRIMARY_NAV_ITEMS = [
 
 export const SECONDARY_NAV_ITEMS = [
   {
-    id: "Domains",
-    label: "Özel Alan Adları",
-    icon: Globe2,
-    description: "Kısa linkleriniz için kurumsal markanıza ait özel alan adlarını bağlayın.",
-  },
-  {
     id: "Billing",
     label: "Paketler & Fatura",
     icon: CreditCard,
     description: "Abonelik planınızı ve kullanım kotalarınızı buradan yönetin.",
     proBadge: true,
   },
-
   {
     id: "Settings",
     label: "Ayarlar",

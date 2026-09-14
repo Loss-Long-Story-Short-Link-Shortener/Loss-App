@@ -1,7 +1,7 @@
 {
   "name": "long-story-short",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,13 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
     "firebase": "^12.19.0",
-    "firebase-admin": "13.6.0",
-    "lucide-react": "latest",
+    "firebase-admin": "^13.6.0",
+    "lucide-react": "^1.45.0",
     "qrcode": "^1.5.4",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
   }
 }
