@@ -7,19 +7,27 @@ import {
 import { Modal } from "../common/Modal";
 import { auth, firebaseConfigured, googleProvider, signInWithPopup } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 export function AuthModal({ isOpen, onClose, reason }) {
   const { loginWithDemo, showToast } = useAuth();
+  const { t, locale } = useLanguage();
   const [mode, setMode] = useState("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const a = t.auth || {};
+
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     if (!firebaseConfigured || !auth) {
-      setError("Firebase henüz yapılandırılmamış. Demo Modu ile hemen giriş yapabilirsiniz.");
+      setError(
+        locale === "tr"
+          ? "Firebase henüz yapılandırılmamış. Demo Modu ile hemen giriş yapabilirsiniz."
+          : "Firebase is not configured yet. You can sign in instantly with Demo Mode."
+      );
       return;
     }
 
@@ -28,15 +36,16 @@ export function AuthModal({ isOpen, onClose, reason }) {
     try {
       if (mode === "sign-in") {
         await signInWithEmailAndPassword(auth, email, password);
-        showToast("Giriş yapıldı ✦", "success");
+        showToast(a.successSignIn || "Giriş yapıldı ✦", "success");
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
-        showToast("Hesap oluşturuldu ✦", "success");
+        showToast(a.successSignUp || "Hesap oluşturuldu ✦", "success");
       }
       onClose();
     } catch (err) {
       setError(
-        err.code?.replace("auth/", "").replaceAll("-", " ") || "İşlem başarısız oldu"
+        err.code?.replace("auth/", "").replaceAll("-", " ") ||
+          (locale === "tr" ? "İşlem başarısız oldu" : "Operation failed")
       );
     } finally {
       setBusy(false);
@@ -45,7 +54,11 @@ export function AuthModal({ isOpen, onClose, reason }) {
 
   const handleGoogleAuth = async () => {
     if (!firebaseConfigured || !auth) {
-      setError("Firebase henüz yapılandırılmamış. Demo Modu ile hemen giriş yapabilirsiniz.");
+      setError(
+        locale === "tr"
+          ? "Firebase henüz yapılandırılmamış. Demo Modu ile hemen giriş yapabilirsiniz."
+          : "Firebase is not configured yet. You can sign in instantly with Demo Mode."
+      );
       return;
     }
 
@@ -53,11 +66,15 @@ export function AuthModal({ isOpen, onClose, reason }) {
     setBusy(true);
     try {
       await signInWithPopup(auth, googleProvider);
-      showToast("Google ile giriş yapıldı ✦", "success");
+      showToast(
+        locale === "tr" ? "Google ile giriş yapıldı ✦" : "Signed in with Google ✦",
+        "success"
+      );
       onClose();
     } catch (err) {
       setError(
-        err.code?.replace("auth/", "").replaceAll("-", " ") || "Google girişi iptal edildi"
+        err.code?.replace("auth/", "").replaceAll("-", " ") ||
+          (locale === "tr" ? "Google girişi iptal edildi" : "Google sign-in cancelled")
       );
     } finally {
       setBusy(false);
@@ -68,19 +85,19 @@ export function AuthModal({ isOpen, onClose, reason }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === "sign-in" ? "Hesabınıza Giriş Yapın" : "Yeni Hesap Oluşturun"}
-      subtitle={reason || "Bağlantılarınızı buluta kaydetmek ve tüm araçlara erişmek için giriş yapın."}
+      title={mode === "sign-in" ? a.signInTitle : a.signUpTitle}
+      subtitle={reason || a.subtitle}
       maxWidth="460px"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {/* 1-Click Demo Login Banner */}
         <div className="demo-access-banner" style={{ margin: "0 0 8px 0" }}>
           <div className="demo-access-text">
-            <strong>Tek Tıkla Demo Girişi</strong>
-            <span>Hesap açmadan tüm Pro özellikleri test edin.</span>
+            <strong>{a.demoBannerTitle}</strong>
+            <span>{a.demoBannerDesc}</span>
           </div>
           <button className="btn btn-primary btn-sm" onClick={loginWithDemo}>
-            Giriş Yap <ArrowRight size={13} />
+            {a.demoBtn} <ArrowRight size={13} />
           </button>
         </div>
 
@@ -104,34 +121,34 @@ export function AuthModal({ isOpen, onClose, reason }) {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          Google ile Devam Et
+          {a.googleBtn}
         </button>
 
         <div className="auth-divider" style={{ margin: "12px 0" }}>
-          <span>veya e-posta ile</span>
+          <span>{a.divider}</span>
         </div>
 
         <form onSubmit={handleEmailAuth}>
           <div className="form-group">
-            <label className="form-label">E-posta</label>
+            <label className="form-label">{a.emailLabel}</label>
             <input
               type="email"
               required
               className="input-text"
-              placeholder="siz@sirket.com"
+              placeholder={a.emailPlaceholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Şifre</label>
+            <label className="form-label">{a.passwordLabel}</label>
             <input
               type="password"
               required
               minLength={6}
               className="input-text"
-              placeholder="••••••••"
+              placeholder={a.passwordPlaceholder}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -158,20 +175,33 @@ export function AuthModal({ isOpen, onClose, reason }) {
             style={{ width: "100%", padding: "11px" }}
             disabled={busy}
           >
-            {busy ? "İşleniyor..." : mode === "sign-in" ? "Giriş Yap" : "Hesap Aç"}
+            {busy ? a.submitting : mode === "sign-in" ? a.signInBtn : a.signUpBtn}
           </button>
         </form>
 
-        <p style={{ textAlign: "center", fontSize: "12px", color: "var(--text-secondary)", marginTop: "12px" }}>
-          {mode === "sign-in" ? "Hesabınız yok mu?" : "Zaten hesabınız var mı?"}{" "}
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "12px",
+            color: "var(--text-secondary)",
+            marginTop: "12px",
+          }}
+        >
+          {mode === "sign-in" ? a.noAccount : a.hasAccount}{" "}
           <button
             onClick={() => {
               setMode(mode === "sign-in" ? "sign-up" : "sign-in");
               setError("");
             }}
-            style={{ background: "transparent", border: "none", color: "var(--primary)", fontWeight: 700, cursor: "pointer" }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--primary)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
           >
-            {mode === "sign-in" ? "Hesap Oluşturun" : "Giriş Yapın"}
+            {mode === "sign-in" ? a.switchToSignUp : a.switchToSignIn}
           </button>
         </p>
       </div>

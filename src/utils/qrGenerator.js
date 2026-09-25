@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { SHORT_LINK_BASE_URL } from "../constants/domains";
 
 /**
  * Pure & Standards-Compliant QR Code Generator with Dynamic Density
@@ -11,7 +12,7 @@ import QRCode from "qrcode";
  * @returns {{ size: number, version: number, matrix: boolean[][] }}
  */
 export function generateQrMatrix(text, options = {}) {
-  const content = String(text || "https://loss.tr");
+  const content = String(text || SHORT_LINK_BASE_URL);
   const errorCorrectionLevel = options.errorCorrectionLevel || "L";
 
   try {

@@ -3,13 +3,22 @@ import { Plus } from "lucide-react";
 import { LinksTable } from "../components/links/LinksTable";
 import { LinkFilters } from "../components/links/LinkFilters";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
-export function LinksPage({ onOpenCreateModal, onOpenQr, onDeleteRequest }) {
+export function LinksPage({
+  onOpenCreateModal,
+  onOpenQr,
+  onDeleteRequest,
+  onEditRequest,
+}) {
   const { links } = useAuth();
+  const { t } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+
+  const lt = t.linksTable || {};
 
   // Filtering & Sorting logic
   const filteredLinks = useMemo(() => {
@@ -37,11 +46,21 @@ export function LinksPage({ onOpenCreateModal, onOpenQr, onDeleteRequest }) {
           return (Number(b.clickCount) || 0) - (Number(a.clickCount) || 0);
         }
         if (sortBy === "title") {
-          return (a.title || a.slug || "").localeCompare(b.title || b.slug || "");
+          return (a.title || a.slug || "").localeCompare(
+            b.title || b.slug || "",
+          );
         }
         // newest default
-        const aTime = a.createdAt?.seconds || 0;
-        const bTime = b.createdAt?.seconds || 0;
+        const toTimestamp = (value) => {
+          if (!value) return 0;
+          if (typeof value === "object" && typeof value.seconds === "number") {
+            return value.seconds * 1000;
+          }
+          const timestamp = new Date(value).getTime();
+          return Number.isNaN(timestamp) ? 0 : timestamp;
+        };
+        const aTime = toTimestamp(a.createdAt);
+        const bTime = toTimestamp(b.createdAt);
         return bTime - aTime;
       });
   }, [links, searchQuery, statusFilter, sortBy]);
@@ -50,14 +69,15 @@ export function LinksPage({ onOpenCreateModal, onOpenQr, onDeleteRequest }) {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tüm Bağlantılar</h1>
+          <h1 className="page-title">{lt.title || "Tüm Bağlantılar"}</h1>
           <p className="page-subtitle">
-            Çalışma alanınızdaki tüm bağlantıları inceleyin, filtreleyin ve yönetin.
+            {lt.subtitle ||
+              "Çalışma alanınızdaki tüm bağlantıları inceleyin, filtreleyin ve yönetin."}
           </p>
         </div>
 
         <button className="btn btn-primary" onClick={onOpenCreateModal}>
-          <Plus size={16} /> Yeni Link Kısalt
+          <Plus size={16} /> {t.common?.newLinkBtn || "Yeni Link Kısalt"}
         </button>
       </div>
 
@@ -65,10 +85,11 @@ export function LinksPage({ onOpenCreateModal, onOpenQr, onDeleteRequest }) {
         <div className="panel-header">
           <div>
             <h2 className="panel-title">
-              Bağlantı Listesi ({filteredLinks.length})
+              {lt.title || "Bağlantı Listesi"} ({filteredLinks.length})
             </h2>
             <p className="panel-desc">
-              Slug, başlık ve yönlendirme adresine göre filtreleyebilirsiniz.
+              {lt.subtitle ||
+                "Slug, başlık ve yönlendirme adresine göre filtreleyebilirsiniz."}
             </p>
           </div>
         </div>
@@ -89,6 +110,7 @@ export function LinksPage({ onOpenCreateModal, onOpenQr, onDeleteRequest }) {
           onOpenQr={onOpenQr}
           onDeleteRequest={onDeleteRequest}
           onOpenCreateModal={onOpenCreateModal}
+          onEditRequest={onEditRequest}
         />
       </div>
     </div>

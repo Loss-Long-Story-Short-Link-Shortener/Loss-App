@@ -8,8 +8,10 @@ import {
   CreditCard,
   Settings2,
   Sparkles,
+  Globe2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useClickOutside } from "../../hooks/useClickOutside";
 
 export function Topbar({
@@ -18,9 +20,14 @@ export function Topbar({
   onSelectPage,
 }) {
   const { user, currentTier, theme, setTheme, requireAuth, signOutUser } = useAuth();
+  const { locale, toggleLanguage, t } = useLanguage();
   const [profileOpen, setProfileOpen] = useState(false);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   const profileRef = useClickOutside(closeProfile, profileOpen);
+
+  const c = t.common || {};
+  const s = t.settings || {};
+  const b = t.billing || {};
 
   const userInitials = (user?.displayName || user?.email || "U")
     .slice(0, 2)
@@ -32,19 +39,50 @@ export function Topbar({
         <button
           className="mobile-menu-btn"
           onClick={onOpenMobile}
-          aria-label="Menüyü Aç"
+          aria-label={locale === "tr" ? "Menüyü Aç" : "Open Menu"}
         >
           <Menu size={18} />
         </button>
       </div>
 
       <div className="topbar-right">
+        {/* Language Switcher Pill */}
+        <button
+          className="loss-nav-lang-btn"
+          onClick={toggleLanguage}
+          title={locale === "tr" ? "Switch to English" : "Türkçe'ye Geç"}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            background: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "20px",
+            padding: "5px 10px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            color: "var(--text-primary)",
+          }}
+        >
+          <Globe2 size={13} style={{ opacity: 0.8 }} />
+          <span>{locale === "tr" ? "TR" : "EN"}</span>
+        </button>
+
         {/* Theme Toggle */}
         <button
           className="icon-btn"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Tema Değiştir"
-          title={theme === "dark" ? "Aydınlık Moda Geç" : "Koyu Moda Geç"}
+          aria-label={locale === "tr" ? "Tema Değiştir" : "Toggle Theme"}
+          title={
+            theme === "dark"
+              ? locale === "tr"
+                ? "Aydınlık Moda Geç"
+                : "Switch to Light Mode"
+              : locale === "tr"
+              ? "Koyu Moda Geç"
+              : "Switch to Dark Mode"
+          }
         >
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
@@ -68,7 +106,7 @@ export function Topbar({
                   <div className="dropdown-user-avatar">{userInitials}</div>
                   <div className="dropdown-user-details">
                     <span className="dropdown-user-name">
-                      {user.displayName || "Kullanıcı"}
+                      {user.displayName || (locale === "tr" ? "Kullanıcı" : "User")}
                     </span>
                     <span className="dropdown-user-email" title={user.email}>
                       {user.email}
@@ -91,7 +129,7 @@ export function Topbar({
                     }}
                   >
                     <Settings2 size={15} />
-                    <span>Ayarlar & Profil</span>
+                    <span>{s.title || "Ayarlar & Profil"}</span>
                   </button>
 
                   <button
@@ -102,7 +140,7 @@ export function Topbar({
                     }}
                   >
                     <CreditCard size={15} />
-                    <span>Paketler & Plan</span>
+                    <span>{b.title || "Paketler & Plan"}</span>
                   </button>
                 </div>
 
@@ -116,7 +154,7 @@ export function Topbar({
                   }}
                 >
                   <LogOut size={15} />
-                  <span>Çıkış Yap</span>
+                  <span>{c.logout || "Çıkış Yap"}</span>
                 </button>
               </div>
             )}
@@ -124,9 +162,15 @@ export function Topbar({
         ) : (
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => requireAuth("Bağlantılarınızı buluta kaydetmek için giriş yapın.")}
+            onClick={() =>
+              requireAuth(
+                locale === "tr"
+                  ? "Bağlantılarınızı buluta kaydetmek için giriş yapın."
+                  : "Sign in to save your short links to the cloud."
+              )
+            }
           >
-            <LogIn size={13} /> Giriş Yap
+            <LogIn size={13} /> {c.login || "Giriş Yap"}
           </button>
         )}
       </div>

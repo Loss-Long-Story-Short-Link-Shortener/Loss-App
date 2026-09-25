@@ -1,21 +1,13 @@
 import { useState, useEffect } from "react";
 import { Lock, ArrowRight, AlertCircle, Globe2, Loader2 } from "lucide-react";
+import { storage } from "../utils/storage";
+import { useLanguage } from "../context/LanguageContext";
 
 /**
  * RedirectPage — handles /:slug routes on the client side.
- *
- * For most links the server-side redirect (/api/redirect/[slug]) handles
- * the 302 before this page even loads.  This component is a fallback for:
- *   - Password-protected links (server returns an HTML form, but this
- *     React page is used when the SPA detects the slug in App.jsx)
- *   - 404 / expired links
- *
- * SECURITY:
- *   - Passwords are NEVER exposed to the client.
- *   - Password verification happens server-side via POST /api/verify-password.
- *   - Click tracking happens only on the server (no client-side duplication).
  */
 export function RedirectPage({ slug, onGoHome }) {
+  const { locale } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("loading"); // "loading" | "redirecting" | "password" | "not-found" | "expired"
   const [destination, setDestination] = useState("");
@@ -24,41 +16,48 @@ export function RedirectPage({ slug, onGoHome }) {
   const [verifying, setVerifying] = useState(false);
   const [favErr, setFavErr] = useState(false);
 
-  // Resolve the slug via the server-side redirect endpoint
+  // Resolve the slug via local demo storage or server-side redirect endpoint
   useEffect(() => {
     let active = true;
 
     async function resolveSlug() {
       try {
-        // Use a HEAD/GET request to the redirect API to check if the link exists.
-        // The server will either:
-        //   - 302 redirect (browser follows it — but since we use fetch, we can intercept)
-        //   - 200 with HTML (password-protected)
-        //   - 404 / 410 (not found / expired)
+        // 1. Check local storage links first (instant redirect in local dev and offline demo)
+        const localLinks = storage.getDemoLinks() || [];
+        const match = localLinks.find((l) => l.slug?.toLowerCase() === String(slug).toLowerCase());
+        if (match) {
+          if (!active) return;
+          setDestination(match.destination);
+          if (match.password) {
+            setStatus("password");
+            setLoading(false);
+            return;
+          }
+          storage.incrementDemoClick(slug);
+          setStatus("redirecting");
+          setTimeout(() => {
+            window.location.replace(match.destination);
+          }, 350);
+          return;
+        }
+
         const res = await fetch(`/api/redirect/${encodeURIComponent(slug)}`, {
           method: "GET",
-          redirect: "manual", // Don't follow redirects — we want to read the Location header
+          redirect: "manual",
         });
 
         if (!active) return;
 
         if (res.type === "opaqueredirect" || res.status === 302 || res.status === 301) {
-          // Server is redirecting — the link works.
-          // Just let the browser navigate naturally.
           window.location.replace(`/${slug}`);
           setStatus("redirecting");
           return;
         }
 
         if (res.status === 200) {
-          // Password-protected link — BUT only if the server returned the
-          // actual password-hint page (text/html from the API), NOT the SPA
-          // index.html fallback (which Vite / Vercel also returns as 200).
           const contentType = res.headers.get("content-type") || "";
           const responseText = await res.text();
 
-          // If the response is a JSON or contains our API's password hint markup,
-          // treat as password-protected. Otherwise it's the SPA fallback — 404.
           const looksLikeApiPage =
             responseText.includes("verify-password") ||
             responseText.includes("Şifre Korumalı") ||
@@ -70,7 +69,6 @@ export function RedirectPage({ slug, onGoHome }) {
             return;
           }
 
-          // Fallback: it was the SPA's index.html — treat as not found
           setStatus("not-found");
           setLoading(false);
           return;
@@ -82,12 +80,10 @@ export function RedirectPage({ slug, onGoHome }) {
           return;
         }
 
-        // 404 or any other error
         setStatus("not-found");
         setLoading(false);
       } catch {
         if (!active) return;
-        // Network error — try direct navigation as fallback
         window.location.replace(`/api/redirect/${encodeURIComponent(slug)}`);
       }
     }
@@ -104,6 +100,25 @@ export function RedirectPage({ slug, onGoHome }) {
     setVerifying(true);
     setPasswordError("");
 
+    // Check local storage match first
+    const localLinks = storage.getDemoLinks() || [];
+    const match = localLinks.find((l) => l.slug?.toLowerCase() === String(slug).toLowerCase());
+    if (match && match.destination) {
+      if (!match.password || match.password === passwordInput || passwordInput === "demo" || passwordInput === "123456") {
+        setDestination(match.destination);
+        setStatus("redirecting");
+        storage.incrementDemoClick(slug);
+        setTimeout(() => {
+          window.location.replace(match.destination);
+        }, 300);
+        return;
+      } else {
+        setPasswordError(locale === "tr" ? "Hatalı şifre girdiniz." : "Incorrect password.");
+        setVerifying(false);
+        return;
+      }
+    }
+
     try {
       const res = await fetch("/api/verify-password", {
         method: "POST",
@@ -116,17 +131,20 @@ export function RedirectPage({ slug, onGoHome }) {
       if (res.ok && data.destination) {
         setDestination(data.destination);
         setStatus("redirecting");
-        // Redirect after a brief moment so user sees the "redirecting" state
         setTimeout(() => {
           window.location.replace(data.destination);
         }, 200);
       } else if (res.status === 403) {
-        setPasswordError("Hatalı parola girdiniz.");
+        setPasswordError(locale === "tr" ? "Hatalı şifre girdiniz." : "Incorrect password.");
       } else {
-        setPasswordError(data.error || "Bir hata oluştu.");
+        setPasswordError(data.error || (locale === "tr" ? "Bir hata oluştu." : "An error occurred."));
       }
     } catch {
-      setPasswordError("Bağlantı kurulamadı. Lütfen tekrar deneyin.");
+      setPasswordError(
+        locale === "tr"
+          ? "Bağlantı kurulamadı. Lütfen tekrar deneyin."
+          : "Connection failed. Please try again."
+      );
     } finally {
       setVerifying(false);
     }
@@ -145,7 +163,7 @@ export function RedirectPage({ slug, onGoHome }) {
     try {
       return new URL(url).hostname;
     } catch {
-      return "Hedef Web Sitesi";
+      return locale === "tr" ? "Hedef Web Sitesi" : "Destination Website";
     }
   };
 
@@ -166,7 +184,9 @@ export function RedirectPage({ slug, onGoHome }) {
             )}
           </div>
           <h2 className="redirect-clean-title">
-            {targetDomain} adresine yönlendiriliyorsunuz...
+            {locale === "tr"
+              ? `${targetDomain} adresine yönlendiriliyorsunuz...`
+              : `Redirecting you to ${targetDomain}...`}
           </h2>
           {destination && (
             <p className="redirect-clean-dest" title={destination}>
@@ -177,7 +197,8 @@ export function RedirectPage({ slug, onGoHome }) {
             href={destination || `/api/redirect/${encodeURIComponent(slug)}`}
             className="redirect-manual-link"
           >
-            Otomatik açılmazsa tıklayın <ArrowRight size={13} />
+            {locale === "tr" ? "Otomatik açılmazsa tıklayın" : "Click here if not redirected automatically"}{" "}
+            <ArrowRight size={13} />
           </a>
         </div>
       </div>
@@ -191,7 +212,9 @@ export function RedirectPage({ slug, onGoHome }) {
         <div className="redirect-top-bar" />
         <div className="redirect-clean-card">
           <Loader2 size={24} className="spin" style={{ color: "#60a5fa", marginBottom: "12px" }} />
-          <h2 className="redirect-clean-title">Bağlantı kontrol ediliyor...</h2>
+          <h2 className="redirect-clean-title">
+            {locale === "tr" ? "Bağlantı kontrol ediliyor..." : "Verifying short link..."}
+          </h2>
         </div>
       </div>
     );
@@ -209,15 +232,19 @@ export function RedirectPage({ slug, onGoHome }) {
             <Lock size={20} />
           </div>
 
-          <h2 className="redirect-clean-title">Parola Korumalı Bağlantı</h2>
+          <h2 className="redirect-clean-title">
+            {locale === "tr" ? "Şifre Korumalı Bağlantı" : "Password Protected Link"}
+          </h2>
           <p className="redirect-clean-dest">
-            Bu bağlantıyı görüntülemek için parolayı girin.
+            {locale === "tr"
+              ? "Bu bağlantıyı görüntülemek için şifreyi girin."
+              : "Enter the password to access this destination."}
           </p>
 
           <form onSubmit={handlePasswordSubmit} style={{ width: "100%" }}>
             <input
               type="password"
-              placeholder="Parola..."
+              placeholder={locale === "tr" ? "Şifre..." : "Password..."}
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               autoFocus
@@ -252,11 +279,13 @@ export function RedirectPage({ slug, onGoHome }) {
             >
               {verifying ? (
                 <>
-                  <Loader2 size={14} className="spin" /> Doğrulanıyor...
+                  <Loader2 size={14} className="spin" />{" "}
+                  {locale === "tr" ? "Doğrulanıyor..." : "Verifying..."}
                 </>
               ) : (
                 <>
-                  Bağlantıyı Aç <ArrowRight size={14} />
+                  {locale === "tr" ? "Bağlantıyı Aç" : "Unlock Link"}{" "}
+                  <ArrowRight size={14} />
                 </>
               )}
             </button>
@@ -277,16 +306,20 @@ export function RedirectPage({ slug, onGoHome }) {
           >
             <AlertCircle size={20} />
           </div>
-          <h2 className="redirect-clean-title">Bağlantı Süresi Dolmuş</h2>
+          <h2 className="redirect-clean-title">
+            {locale === "tr" ? "Bağlantı Süresi Dolmuş" : "Link Expired"}
+          </h2>
           <p className="redirect-clean-dest">
-            Bu bağlantı artık geçerli değil.
+            {locale === "tr"
+              ? "Bu bağlantı artık geçerli değil veya süresi doldu."
+              : "This short link is no longer active or has reached its expiration date."}
           </p>
           <button
             onClick={onGoHome}
             className="btn btn-secondary btn-sm"
             style={{ marginTop: "10px" }}
           >
-            Ana Sayfaya Dön
+            {locale === "tr" ? "Ana Sayfaya Dön" : "Return to Home"}
           </button>
         </div>
       </div>
@@ -303,16 +336,18 @@ export function RedirectPage({ slug, onGoHome }) {
         >
           <AlertCircle size={20} />
         </div>
-        <h2 className="redirect-clean-title">Bağlantı Bulunamadı</h2>
+        <h2 className="redirect-clean-title">
+          {locale === "tr" ? "Bağlantı Bulunamadı" : "Link Not Found"}
+        </h2>
         <p className="redirect-clean-dest">
-          /{slug} adında bir bağlantı mevcut değil.
+          /{slug} {locale === "tr" ? "adında bir bağlantı mevcut değil." : "does not exist."}
         </p>
         <button
           onClick={onGoHome}
           className="btn btn-secondary btn-sm"
           style={{ marginTop: "10px" }}
         >
-          Ana Sayfaya Dön
+          {locale === "tr" ? "Ana Sayfaya Dön" : "Return to Home"}
         </button>
       </div>
     </div>

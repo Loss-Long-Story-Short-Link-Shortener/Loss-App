@@ -1,21 +1,34 @@
 import { useState } from "react";
 import { QrCode, Download, ExternalLink, Sparkles } from "lucide-react";
-import { QrCodeSvg, downloadQrSvg, downloadQrPng } from "../components/common/QrCodeSvg";
+import {
+  QrCodeSvg,
+  downloadQrSvg,
+  downloadQrPng,
+} from "../components/common/QrCodeSvg";
 import { EmptyState } from "../components/common/EmptyState";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { SHORT_LINK_BASE_URL, getShortUrl } from "../constants/domains";
 
 export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
   const { links, showToast } = useAuth();
-  const [customText, setCustomText] = useState("https://loss.tr");
+  const { t, locale } = useLanguage();
+  const [customText, setCustomText] = useState(SHORT_LINK_BASE_URL);
   const [ecLevel, setEcLevel] = useState("L");
+
+  const qs = t.qrStudio || {};
+  const c = t.common || {};
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dinamik QR Kod Stüdyosu</h1>
+          <h1 className="page-title">
+            {qs.title || "Dinamik QR Kod Stüdyosu"}
+          </h1>
           <p className="page-subtitle">
-            Tüm bağlantılarınız için standartlara uygun, taranabilir vektörel SVG ve yüksek çözünürlüklü PNG QR kodlar.
+            {qs.subtitle ||
+              "Tüm bağlantılarınız için standartlara uygun, taranabilir vektörel SVG ve yüksek çözünürlüklü PNG QR kodlar."}
           </p>
         </div>
       </div>
@@ -25,17 +38,33 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
         <div className="panel-header">
           <div>
             <h2 className="panel-title">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <Sparkles size={16} /> Anında QR Kod Test & İndirme
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Sparkles size={16} />{" "}
+                {qs.instantTitle || "Anında QR Kod Test & İndirme"}
               </span>
             </h2>
             <p className="panel-desc">
-              Herhangi bir metin veya bağlantı girip anında taranabilir QR kodunuzu oluşturun.
+              {qs.instantSubtitle ||
+                "Herhangi bir metin veya bağlantı girip anında taranabilir QR kodunuzu oluşturun."}
             </p>
           </div>
         </div>
 
-        <div style={{ padding: "20px 24px", display: "flex", gap: "24px", alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            padding: "20px 24px",
+            display: "flex",
+            gap: "24px",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <div
             style={{
               background: "#ffffff",
@@ -57,7 +86,9 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
 
           <div style={{ flex: 1, minWidth: "260px" }}>
             <div className="form-group" style={{ marginBottom: "14px" }}>
-              <label className="form-label">QR Kod İçeriği / URL</label>
+              <label className="form-label">
+                {qs.contentLabel || "QR Kod İçeriği / URL"}
+              </label>
               <input
                 type="text"
                 className="input-text"
@@ -68,10 +99,29 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
             </div>
 
             <div className="form-group" style={{ marginBottom: "16px" }}>
-              <label className="form-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>QR Detay / Karmaşıklık Düzeyi</span>
-                <span style={{ color: "var(--primary)", fontSize: "11px", fontWeight: 600 }}>
-                  {ecLevel === "L" ? "✦ Sade (Linke Özel Minimum Kare)" : ecLevel === "M" ? "Standart" : "Yüksek Koruma"}
+              <label
+                className="form-label"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>
+                  {qs.densityLabel || "QR Detay / Karmaşıklık Düzeyi"}
+                </span>
+                <span
+                  style={{
+                    color: "var(--primary)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {ecLevel === "L"
+                    ? qs.densitySimple || "✦ Sade (Linke Özel Minimum Kare)"
+                    : ecLevel === "M"
+                      ? qs.densityStandard || "Standart"
+                      : qs.densityHigh || "Yüksek Koruma"}
                 </span>
               </label>
               <div style={{ display: "flex", gap: "8px" }}>
@@ -81,7 +131,7 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                   onClick={() => setEcLevel("L")}
                   style={{ fontSize: "11px", padding: "4px 10px" }}
                 >
-                  Sade (Önerilen)
+                  {qs.densitySimple || "Sade (Önerilen)"}
                 </button>
                 <button
                   type="button"
@@ -89,7 +139,7 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                   onClick={() => setEcLevel("M")}
                   style={{ fontSize: "11px", padding: "4px 10px" }}
                 >
-                  Standart
+                  {qs.densityStandard || "Standart"}
                 </button>
                 <button
                   type="button"
@@ -97,7 +147,7 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                   onClick={() => setEcLevel("H")}
                   style={{ fontSize: "11px", padding: "4px 10px" }}
                 >
-                  Yüksek
+                  {qs.densityHigh || "Yüksek"}
                 </button>
               </div>
             </div>
@@ -107,19 +157,28 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                 className="btn btn-secondary btn-sm"
                 onClick={() => {
                   downloadQrSvg("live-studio-qr", "custom-qr.svg");
-                  showToast("SVG indirildi", "success");
+                  showToast(
+                    locale === "tr" ? "SVG indirildi" : "SVG downloaded",
+                    "success",
+                  );
                 }}
               >
-                <Download size={14} /> Vektörel SVG İndir
+                <Download size={14} /> {qs.downloadSvg || "Vektörel SVG İndir"}
               </button>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => {
-                  downloadQrPng("live-studio-qr", "custom-qr.png", 1000);
-                  showToast("HD PNG indirildi", "success");
+                  downloadQrPng("live-studio-qr", "custom-qr-300dpi.png", 2400);
+                  showToast(
+                    locale === "tr"
+                      ? "300 DPI HD PNG indirildi"
+                      : "300 DPI HD PNG downloaded",
+                    "success",
+                  );
                 }}
               >
-                <Download size={14} /> HD PNG İndir (Baskı)
+                <Download size={14} />{" "}
+                {qs.downloadPng || "300 DPI HD PNG (Baskı)"}
               </button>
             </div>
           </div>
@@ -136,13 +195,13 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
           marginBottom: "16px",
         }}
       >
-        Mevcut Linklerin QR Kodları ({links.length})
+        {qs.existingTitle || "Mevcut Linklerin QR Kodları"} ({links.length})
       </h3>
 
       {links.length > 0 ? (
         <div className="qr-grid">
           {links.map((link) => {
-            const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
+            const shortUrl = link.shortUrl || getShortUrl(link.slug);
             const qrCardId = `qr-card-${link.slug || "item"}`;
             return (
               <div key={link.id || link.slug} className="qr-card">
@@ -169,18 +228,23 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
                     style={{ flex: 1 }}
                     onClick={() => onOpenQr(link)}
                   >
-                    Özelleştir
+                    {qs.customize || "Özelleştir"}
                   </button>
                   <button
                     className="btn btn-primary btn-sm"
                     style={{ flex: 1 }}
                     onClick={() => {
-                      downloadQrPng(qrCardId, `${link.slug}-qr.png`, 1000);
-                      showToast("PNG indirildi", "success");
+                      downloadQrPng(qrCardId, `${link.slug}-300dpi.png`, 2400);
+                      showToast(
+                        locale === "tr"
+                          ? "300 DPI HD PNG indirildi"
+                          : "300 DPI HD PNG downloaded",
+                        "success",
+                      );
                     }}
-                    title="PNG İndir"
+                    title="300 DPI HD PNG"
                   >
-                    <Download size={13} /> İndir
+                    <Download size={13} /> HD PNG
                   </button>
                 </div>
               </div>
@@ -190,9 +254,12 @@ export function QrStudioPage({ onOpenCreateModal, onOpenQr }) {
       ) : (
         <EmptyState
           icon={QrCode}
-          title="Henüz link bulunmuyor"
-          description="QR kod galerisini görüntülemek için önce bir kısa bağlantı oluşturun."
-          actionLabel="Link Kısalt"
+          title={qs.emptyTitle || "Henüz link bulunmuyor"}
+          description={
+            qs.emptyDesc ||
+            "QR kod galerisini görüntülemek için önce bir kısa bağlantı oluşturun."
+          }
+          actionLabel={c.newLinkBtn || "Link Kısalt"}
           onAction={onOpenCreateModal}
         />
       )}

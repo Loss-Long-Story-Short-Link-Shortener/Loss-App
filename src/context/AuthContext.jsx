@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -79,7 +86,7 @@ export function AuthProvider({ children }) {
       }
       return true;
     },
-    [user]
+    [user],
   );
 
   // Firebase auth listener
@@ -87,7 +94,11 @@ export function AuthProvider({ children }) {
     if (!firebaseConfigured || !auth) {
       // Offline/local guest mode by default
       const savedUser = storage.isDemoUser()
-        ? { uid: "demo_user", email: "demo@loss.tr", displayName: "Demo Kullanıcı" }
+        ? {
+            uid: "demo_user",
+            email: "demo@loss.tr",
+            displayName: "Demo Kullanıcı",
+          }
         : null;
       setUser(savedUser);
       setAuthLoading(false);
@@ -129,7 +140,7 @@ export function AuthProvider({ children }) {
       const tierMeta = TIERS[currentTier] || TIERS.free;
       if (links.length >= tierMeta.maxLinks) {
         throw new Error(
-          `Plan kotanıza (${tierMeta.maxLinks} link) ulaştınız. Lütfen paketinizi yükseltin.`
+          `Plan kotanıza (${tierMeta.maxLinks} link) ulaştınız. Lütfen paketinizi yükseltin.`,
         );
       }
       const created = await api.createLink(user, payload);
@@ -137,8 +148,40 @@ export function AuthProvider({ children }) {
       showToast("Kısa bağlantı hazır! ✦", "success");
       return created;
     },
-    [user, links, currentTier, showToast]
+    [user, links, currentTier, showToast],
   );
+
+  // Progressive Onboarding: Automatically claim pending link created in hero sandbox upon login
+  useEffect(() => {
+    if (!user || user.isDemo) return;
+    try {
+      if (typeof window === "undefined") return;
+      const pendingRaw = sessionStorage.getItem("loss_pending_link");
+      if (pendingRaw) {
+        sessionStorage.removeItem("loss_pending_link");
+        const pending = JSON.parse(pendingRaw);
+        if (pending?.url) {
+          addLink({
+            destination: pending.url,
+            slug: pending.slug || undefined,
+            title: "Önizleme Bağlantısı",
+            tag: "Hero Claim",
+          })
+            .then(() => {
+              showToast(
+                "✦ Harika! Önizlemedeki link hesabınıza aktarıldı.",
+                "success",
+              );
+            })
+            .catch((err) => {
+              console.warn("Otomatik link sahiplenme hatası:", err.message);
+            });
+        }
+      }
+    } catch (err) {
+      console.warn("Pending claim check error:", err);
+    }
+  }, [user, addLink, showToast]);
 
   const removeLink = useCallback(
     async (linkId, linkObj) => {
@@ -147,22 +190,47 @@ export function AuthProvider({ children }) {
       setLinks((prev) => prev.filter((l) => l.id !== linkId));
       showToast("Bağlantı silindi", "info");
     },
-    [user, links, showToast]
+    [user, links, showToast],
+  );
+
+  const updateLink = useCallback(
+    async (linkId, updates) => {
+      try {
+        await api.updateLink(user, linkId, updates);
+        setLinks((prev) =>
+          prev.map((l) => (l.id === linkId ? { ...l, ...updates } : l)),
+        );
+        showToast("Bağlantı başarıyla güncellendi ✦", "success");
+        return true;
+      } catch (err) {
+        showToast(err.message || "Güncelleme başarısız oldu", "error");
+        return false;
+      }
+    },
+    [user, showToast],
   );
 
   const toggleLinkStatus = useCallback(
     async (linkId, currentStatus) => {
       const nextStatus = currentStatus === "paused" ? "active" : "paused";
-      await api.updateLinkStatus(user, linkId, nextStatus);
-      setLinks((prev) =>
-        prev.map((l) => (l.id === linkId ? { ...l, status: nextStatus } : l))
-      );
-      showToast(
-        nextStatus === "active" ? "Bağlantı yayında" : "Bağlantı duraklatıldı",
-        "info"
-      );
+      try {
+        await api.updateLinkStatus(user, linkId, nextStatus);
+        setLinks((prev) =>
+          prev.map((l) => (l.id === linkId ? { ...l, status: nextStatus } : l)),
+        );
+        showToast(
+          nextStatus === "active"
+            ? "Bağlantı yayında"
+            : "Bağlantı duraklatıldı",
+          "info",
+        );
+        return true;
+      } catch (err) {
+        showToast(err.message || "Bağlantı durumu güncellenemedi", "error");
+        return false;
+      }
     },
-    [user, showToast]
+    [user, showToast],
   );
 
   const loginWithDemo = useCallback(() => {
@@ -190,7 +258,7 @@ export function AuthProvider({ children }) {
       setUser((prev) => (prev ? { ...prev, displayName } : prev));
       showToast("Profil bilgileri kaydedildi ✦", "success");
     },
-    [showToast]
+    [showToast],
   );
 
   const signOutUser = useCallback(async () => {
@@ -229,6 +297,7 @@ export function AuthProvider({ children }) {
     totalClicks,
     refreshLinks,
     addLink,
+    updateLink,
     removeLink,
     toggleLinkStatus,
     toasts,

@@ -1,24 +1,40 @@
-import { Check, X, Sparkles, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { Check, X, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
 import { TIERS } from "../constants/tiers";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import { PaytrModal } from "../components/modals/PaytrModal";
 
 export function BillingPage() {
   const { currentTier, setCurrentTier, billingPeriod, setBillingPeriod, showToast } =
     useAuth();
+  const { t, locale } = useLanguage();
+
+  const [paytrModalOpen, setPaytrModalOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState("pro");
+
+  const b = t.billing || {};
+  const p = t.pricing || {};
 
   const handleSelectTier = (tierKey) => {
-    setCurrentTier(tierKey);
-    showToast(`${TIERS[tierKey].name} planına başarıyla geçildi!`, "success");
+    if (tierKey === "free") {
+      setCurrentTier("free");
+      showToast(b.freeSwitched || "Ücretsiz plana geçildi", "info");
+      return;
+    }
+    setSelectedTier(tierKey);
+    setPaytrModalOpen(true);
   };
 
   return (
     <div>
       <div className="page-header" style={{ textAlign: "center", display: "block" }}>
         <h1 className="page-title" style={{ marginBottom: "8px" }}>
-          Abonelik & Paket Seçenekleri
+          {b.title || "Abonelik & Paket Seçenekleri"}
         </h1>
         <p className="page-subtitle" style={{ maxWidth: "560px", margin: "0 auto" }}>
-          Ekibinizin veya işletmenizin ihtiyaçlarına uygun plana geçerek link ve trafik kotalarınızı artırın.
+          {b.subtitle ||
+            "Ekibinizin veya işletmenizin ihtiyaçlarına uygun plana geçerek link ve trafik kotalarınızı artırın."}
         </p>
       </div>
 
@@ -31,7 +47,7 @@ export function BillingPage() {
             color: billingPeriod === "monthly" ? "var(--text-primary)" : "var(--text-muted)",
           }}
         >
-          Aylık Fatura
+          {b.monthly || "Aylık Fatura"}
         </span>
 
         <button
@@ -52,7 +68,7 @@ export function BillingPage() {
             gap: "6px",
           }}
         >
-          Yıllık Fatura
+          {b.annual || "Yıllık Fatura"}
           <span
             style={{
               fontSize: "10px",
@@ -63,7 +79,7 @@ export function BillingPage() {
               color: "var(--success)",
             }}
           >
-            %20 İndirim
+            {b.annualDiscount || "%20 İndirim"}
           </span>
         </span>
       </div>
@@ -78,6 +94,24 @@ export function BillingPage() {
               ? tier.priceMonthly
               : Math.round(tier.priceAnnual / 12);
 
+          const tierLocalizedName =
+            tierKey === "free"
+              ? p.freeName || tier.name
+              : tierKey === "starter"
+              ? p.starterName || tier.name
+              : tierKey === "pro"
+              ? p.proName || tier.name
+              : p.agencyName || tier.name;
+
+          const tierLocalizedDesc =
+            tierKey === "free"
+              ? p.freeDesc || tier.description
+              : tierKey === "starter"
+              ? p.starterDesc || tier.description
+              : tierKey === "pro"
+              ? p.proDesc || tier.description
+              : p.agencyDesc || tier.description;
+
           return (
             <div
               key={tierKey}
@@ -86,16 +120,18 @@ export function BillingPage() {
               {isPro && (
                 <div className="pricing-featured-badge">
                   <Sparkles size={12} style={{ display: "inline", marginRight: "3px" }} />
-                  Popüler Tercih
+                  {b.popular || "Popüler Tercih"}
                 </div>
               )}
 
-              <div className="pricing-plan-name">{tier.name}</div>
-              <div className="pricing-plan-desc">{tier.description}</div>
+              <div className="pricing-plan-name">{tierLocalizedName}</div>
+              <div className="pricing-plan-desc">{tierLocalizedDesc}</div>
 
               <div className="pricing-price-row">
-                <span className="pricing-price-num">${price}</span>
-                <span className="pricing-price-period">/ ay</span>
+                <span className="pricing-price-num">
+                  {tier.priceMonthly === 0 ? "₺0" : `${tier.currency || "₺"}${price}`}
+                </span>
+                <span className="pricing-price-period">{b.perMonth || "/ ay"}</span>
               </div>
 
               <button
@@ -104,7 +140,9 @@ export function BillingPage() {
                 disabled={isCurrent}
                 onClick={() => handleSelectTier(tierKey)}
               >
-                {isCurrent ? "Mevcut Paketiniz" : `${tier.name} Paketine Geç`}
+                {isCurrent
+                  ? b.currentPlan || "Mevcut Paketiniz"
+                  : `${tierLocalizedName} ${b.switchTo || "Paketine Geç"}`}
               </button>
 
               <ul className="pricing-features-list">
@@ -114,17 +152,30 @@ export function BillingPage() {
                     <span>{feat}</span>
                   </li>
                 ))}
-                {tier.disabled.map((feat, i) => (
-                  <li key={i} className="pricing-feature-item disabled">
-                    <X size={15} style={{ flexShrink: 0 }} />
-                    <span>{feat}</span>
-                  </li>
-                ))}
+                {tier.disabled &&
+                  tier.disabled.map((feat, i) => (
+                    <li key={i} className="pricing-feature-item disabled">
+                      <X size={15} style={{ flexShrink: 0 }} />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
               </ul>
             </div>
           );
         })}
       </div>
+
+      <div style={{ textAlign: "center", marginTop: "32px", color: "var(--text-muted)", fontSize: "12.5px" }}>
+        <ShieldCheck size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px", color: "#10b981" }} />
+        {b.paytrGuarantee || "Tüm ödemeler PayTR güvencesiyle 256-bit SSL korumalı olarak tahsil edilir. İstediğiniz an tek tıkla iptal edebilirsiniz."}
+      </div>
+
+      <PaytrModal
+        isOpen={paytrModalOpen}
+        onClose={() => setPaytrModalOpen(false)}
+        tierKey={selectedTier}
+        billingPeriod={billingPeriod}
+      />
     </div>
   );
 }

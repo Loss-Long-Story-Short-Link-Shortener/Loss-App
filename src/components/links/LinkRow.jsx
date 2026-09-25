@@ -9,30 +9,34 @@ import {
   Play,
   Trash2,
   MoreHorizontal,
+  Edit3,
 } from "lucide-react";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useClickOutside } from "../../hooks/useClickOutside";
+import { getShortUrl } from "../../constants/domains";
 
-export function LinkRow({
-  link,
-  onOpenQr,
-  onDeleteRequest,
-}) {
+export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
   const { toggleLinkStatus, showToast } = useAuth();
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const menuRef = useClickOutside(closeMenu, menuOpen);
 
-  const shortUrl = link.shortUrl || `https://loss.tr/${link.slug}`;
+  const lt = t.linksTable || {};
+  const c = t.common || {};
+
+  const shortUrl = link.shortUrl || getShortUrl(link.slug);
 
   const handleCopy = async (e) => {
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(shortUrl);
       setCopied(true);
-      showToast("Kısa link panoya kopyalandı ✦", "success");
+      showToast(c.copiedToast || "Kısa link panoya kopyalandı ✦", "success");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       showToast("Kopyalanamadı", "error");
@@ -49,7 +53,7 @@ export function LinkRow({
           <button
             className="link-qr-icon-btn"
             onClick={() => onOpenQr(link)}
-            title="QR Kodu Görüntüle"
+            title={lt.viewQr || "QR Kodu Görüntüle"}
           >
             <QrCode size={16} />
           </button>
@@ -63,7 +67,7 @@ export function LinkRow({
               <button
                 className="copy-mini-btn"
                 onClick={handleCopy}
-                title="Panoya Kopyala"
+                title={c.copy || "Panoya Kopyala"}
               >
                 {copied ? (
                   <Check size={13} color="#10b981" />
@@ -88,7 +92,7 @@ export function LinkRow({
       <td>
         <span className={`status-pill ${isPaused ? "paused" : "active"}`}>
           <span className="status-pill-dot" />
-          {isPaused ? "Duraklatıldı" : "Aktif"}
+          {isPaused ? lt.filterPaused || "Duraklatıldı" : c.active || "Yayında"}
         </span>
       </td>
 
@@ -97,13 +101,15 @@ export function LinkRow({
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {link.password && (
             <span className="tag-badge secured" title="Şifre Korumalı">
-              <Lock size={11} /> Şifreli
+              <Lock size={11} /> {t.studio?.secured || "Şifreli"}
             </span>
           )}
           {link.tag ? (
             <span className="tag-badge">{link.tag}</span>
           ) : (
-            <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>—</span>
+            <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+              —
+            </span>
           )}
         </div>
       </td>
@@ -150,7 +156,18 @@ export function LinkRow({
                 setMenuOpen(false);
               }}
             >
-              <QrCode size={13} /> QR Kodu Aç
+              <QrCode size={13} /> {lt.viewQr || "QR Kodu Aç"}
+            </button>
+
+            <button
+              className="btn btn-subtle btn-sm"
+              style={{ justifyContent: "flex-start" }}
+              onClick={() => {
+                if (onEditRequest) onEditRequest(link);
+                setMenuOpen(false);
+              }}
+            >
+              <Edit3 size={13} /> {lt.editDest || "Hedefi Düzenle"}
             </button>
 
             <a
@@ -161,19 +178,22 @@ export function LinkRow({
               style={{ justifyContent: "flex-start" }}
               onClick={() => setMenuOpen(false)}
             >
-              <ExternalLink size={13} /> Bağlantıyı Test Et
+              <ExternalLink size={13} /> {lt.testLink || "Bağlantıyı Test Et"}
             </a>
 
             <button
               className="btn btn-subtle btn-sm"
               style={{ justifyContent: "flex-start" }}
-              onClick={() => {
-                toggleLinkStatus(link.id, link.status);
+              disabled={statusBusy}
+              onClick={async () => {
+                setStatusBusy(true);
+                await toggleLinkStatus(link.id, link.status);
+                setStatusBusy(false);
                 setMenuOpen(false);
               }}
             >
               {isPaused ? <Play size={13} /> : <Pause size={13} />}
-              {isPaused ? "Aktife Al" : "Duraklat"}
+              {isPaused ? lt.resume || "Aktife Al" : lt.pause || "Duraklat"}
             </button>
 
             <button
@@ -184,7 +204,7 @@ export function LinkRow({
                 setMenuOpen(false);
               }}
             >
-              <Trash2 size={13} /> Bağlantıyı Sil
+              <Trash2 size={13} /> {lt.delete || "Bağlantıyı Sil"}
             </button>
           </div>
         )}

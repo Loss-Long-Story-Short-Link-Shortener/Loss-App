@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { formatTimeAgo } from "../../utils/formatters";
 
 export function Sidebar({
@@ -24,6 +25,12 @@ export function Sidebar({
   onToggleCollapse,
 }) {
   const { user, links, requireAuth, signOutUser } = useAuth();
+  const { t, locale } = useLanguage();
+
+  const c = t.common || {};
+  const s = t.studio || {};
+  const a = t.analytics || {};
+  const b = t.billing || {};
 
   const userInitials = (
     user?.displayName
@@ -33,7 +40,11 @@ export function Sidebar({
 
   const handleNavClick = (pageId, requiresLogin = false) => {
     if (requiresLogin && !user) {
-      requireAuth(`${pageId} bölümünü kullanmak için giriş yapmalısınız.`);
+      requireAuth(
+        locale === "tr"
+          ? `${pageId} bölümünü kullanmak için giriş yapmalısınız.`
+          : `Please sign in to access ${pageId}.`
+      );
       return;
     }
     onSelectPage(pageId);
@@ -52,20 +63,24 @@ export function Sidebar({
               onCloseMobile();
             }}
             style={{ cursor: "pointer" }}
-            title="Long Story Short"
+            title="loss.tr"
           >
             <div className="sidebar-brand-icon">
-              <img src="/loss.png" alt="Long Story Short" />
+              <img src="/loss.png" alt="loss.tr" />
             </div>
-            <span className="sidebar-app-name">Long Story Short</span>
+            <span className="sidebar-app-name">loss.tr</span>
           </div>
         )}
 
         <button
           className="sidebar-toggle-btn"
           onClick={onToggleCollapse}
-          title={collapsed ? "Menüyü Genişlet" : "Menüyü Daralt"}
-          aria-label={collapsed ? "Menüyü Genişlet" : "Menüyü Daralt"}
+          title={
+            collapsed
+              ? locale === "tr" ? "Menüyü Genişlet" : "Expand Sidebar"
+              : locale === "tr" ? "Menüyü Daralt" : "Collapse Sidebar"
+          }
+          aria-label={collapsed ? "Expand" : "Collapse"}
           style={collapsed ? { margin: "0 auto" } : {}}
         >
           {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
@@ -78,16 +93,18 @@ export function Sidebar({
           onOpenCreateModal();
           onCloseMobile();
         }}
-        title="Yeni Link Kısalt"
+        title={c.newLinkBtn || "Yeni Link Kısalt"}
       >
         <Plus size={16} strokeWidth={2.2} />
-        {!collapsed && <span>Yeni Link Kısalt</span>}
+        {!collapsed && <span>{c.newLinkBtn || "Yeni Link Kısalt"}</span>}
       </button>
 
-      {/* Recents list (Chat history style) */}
+      {/* Recents list */}
       {!collapsed && links.length > 0 && (
         <div className="sidebar-recents-section">
-          <p className="sidebar-section-title">GEÇMİŞ BAĞLANTILAR</p>
+          <p className="sidebar-section-title">
+            {locale === "tr" ? "GEÇMİŞ BAĞLANTILAR" : "RECENT SHORT LINKS"}
+          </p>
           <div className="sidebar-recents-list">
             {links.slice(0, 5).map((link) => (
               <div
@@ -113,35 +130,42 @@ export function Sidebar({
 
       {/* Workspace Menu */}
       <div className="sidebar-nav-section">
-        {!collapsed && <p className="sidebar-section-title">ARAÇLAR</p>}
+        {!collapsed && (
+          <p className="sidebar-section-title">
+            {locale === "tr" ? "ARAÇLAR" : "NAVIGATION"}
+          </p>
+        )}
         <div className="sidebar-nav-list">
           <button
             className={`sidebar-nav-btn ${activePage === "Overview" ? "active" : ""}`}
             onClick={() => handleNavClick("Overview")}
-            title="Kısaltıcı"
+            title={locale === "tr" ? "Link Stüdyosu" : "Link Studio"}
           >
             <Link2 size={16} />
-            {!collapsed && <span>Kısaltıcı</span>}
+            {!collapsed && <span>{locale === "tr" ? "Link Stüdyosu" : "Link Studio"}</span>}
           </button>
 
           <button
             className={`sidebar-nav-btn ${activePage === "Analytics" ? "active" : ""}`}
             onClick={() => handleNavClick("Analytics", true)}
-            title="Analizler"
+            title={a.title || "Analizler"}
           >
             <BarChart3 size={16} />
-            {!collapsed && <span>Analizler</span>}
-            {!collapsed && !user && <span className="sidebar-nav-badge">Giriş</span>}
+            {!collapsed && <span>{a.title || "Analizler"}</span>}
+            {!collapsed && !user && (
+              <span className="sidebar-nav-badge">
+                {locale === "tr" ? "Giriş" : "Sign In"}
+              </span>
+            )}
           </button>
-
 
           <button
             className={`sidebar-nav-btn ${activePage === "Billing" ? "active" : ""}`}
             onClick={() => handleNavClick("Billing")}
-            title="Paketler"
+            title={b.title || "Paketler"}
           >
             <CreditCard size={16} />
-            {!collapsed && <span>Paketler</span>}
+            {!collapsed && <span>{b.title || "Paketler"}</span>}
           </button>
         </div>
       </div>
@@ -153,7 +177,7 @@ export function Sidebar({
             <div
               className="sidebar-user-info-btn"
               onClick={() => handleNavClick("Settings")}
-              title="Profil ve Ayarlar"
+              title={locale === "tr" ? "Profil ve Ayarlar" : "Profile & Settings"}
             >
               <div className="sidebar-user-avatar">
                 {user.photoURL ? (
@@ -168,7 +192,7 @@ export function Sidebar({
                     {user.displayName || user.email?.split("@")[0]}
                   </span>
                   <span className="sidebar-user-email">
-                    {user.email || "Hesap"}
+                    {user.email || "loss.tr"}
                   </span>
                 </div>
               )}
@@ -178,8 +202,8 @@ export function Sidebar({
               <button
                 className="sidebar-logout-btn"
                 onClick={signOutUser}
-                title="Çıkış Yap"
-                aria-label="Çıkış Yap"
+                title={c.logout || "Çıkış Yap"}
+                aria-label={c.logout || "Çıkış Yap"}
               >
                 <LogOut size={14} />
               </button>
@@ -189,11 +213,17 @@ export function Sidebar({
           <button
             className="sidebar-bottom-btn"
             style={{ width: "100%", justifyContent: "center", background: "var(--bg-surface-subtle)" }}
-            onClick={() => requireAuth("Bağlantılarınızı hesabınıza bağlamak için giriş yapın.")}
-            title="Giriş Yap / Kaydol"
+            onClick={() =>
+              requireAuth(
+                locale === "tr"
+                  ? "Bağlantılarınızı hesabınıza bağlamak için giriş yapın."
+                  : "Sign in to save your short links to your account."
+              )
+            }
+            title={c.login || "Giriş Yap / Kaydol"}
           >
             <LogIn size={15} />
-            {!collapsed && <span>Giriş Yap / Kaydol</span>}
+            {!collapsed && <span>{c.login || "Giriş Yap / Kaydol"}</span>}
           </button>
         )}
       </div>

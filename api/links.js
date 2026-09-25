@@ -7,11 +7,20 @@ import {
   requireUser,
   sendJson,
 } from "./_firebase.js";
+import { invalidateLinkCache } from "./redirect/[slug].js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function createSlug() {
-  return randomBytes(4).toString("hex").slice(0, 6);
+const BASE62_CHARSET =
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function createSlug(length = 7) {
+  const bytes = randomBytes(length);
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += BASE62_CHARSET[bytes[i] % 62];
+  }
+  return result;
 }
 
 function normalizeSlug(value) {
@@ -69,13 +78,17 @@ const RESERVED_SLUGS = new Set([
   "health",
   "ping",
   "_health",
+  "s",
+  "shortener",
+  "link-shortener",
 ]);
 
-// Tier limits (mirrored from frontend constants/tiers.js)
+// Tier limits (Active Links Capacity mirrored from constants/tiers.js)
 const TIER_LIMITS = {
-  free: 50,
-  pro: 1500,
-  enterprise: 50000,
+  free: 25,
+  starter: 500,
+  pro: 2500,
+  agency: 15000,
 };
 
 function getCanonicalHost() {
@@ -96,11 +109,7 @@ function getBaseUrl(requestHost) {
 }
 
 function getRequestHost(request) {
-  return (
-    request.headers["x-forwarded-host"] ||
-    request.headers.host ||
-    ""
-  )
+  return (request.headers["x-forwarded-host"] || request.headers.host || "")
     .split(",")[0]
     .trim()
     .toLowerCase();
@@ -150,7 +159,9 @@ export default async function handler(request, response) {
       const { id, slug } = request.body || request.query || {};
       const targetId = id || (slug ? `${host}__${slug}` : null);
       if (!targetId) {
-        return sendJson(response, 400, { error: "Link ID or slug is required" });
+        return sendJson(response, 400, {
+          error: "Link ID or slug is required",
+        });
       }
 
       const linkRef = db.collection("links").doc(targetId);
@@ -164,16 +175,19 @@ export default async function handler(request, response) {
       }
 
       await linkRef.delete();
+      invalidateLinkCache(targetId);
       return sendJson(response, 200, { success: true, id: targetId });
     }
 
-    // ── PATCH: Update status, title, tag, password, expiresAt ─────────
+    // ── PATCH: Update status, destination, title, tag, password, expiresAt ───
     if (request.method === "PATCH") {
-      const { id, slug, status, title, tag, password, expiresAt } =
+      const { id, slug, destination, status, title, tag, password, expiresAt } =
         request.body || {};
       const targetId = id || (slug ? `${host}__${slug}` : null);
       if (!targetId) {
-        return sendJson(response, 400, { error: "Link ID or slug is required" });
+        return sendJson(response, 400, {
+          error: "Link ID or slug is required",
+        });
       }
 
       const linkRef = db.collection("links").doc(targetId);
@@ -187,6 +201,32 @@ export default async function handler(request, response) {
       }
 
       const updates = { updatedAt: FieldValue.serverTimestamp() };
+
+      if (destination !== undefined) {
+        let destinationUrl;
+        try {
+          destinationUrl = new URL(destination.trim());
+          if (!["http:", "https:"].includes(destinationUrl.protocol)) {
+            throw new Error("Invalid protocol");
+          }
+        } catch {
+          return sendJson(response, 400, {
+            error:
+              "Geçersiz hedef URL. Lütfen geçerli bir http veya https adresi girin.",
+          });
+        }
+
+        if (
+          BLOCKED_DESTINATION_HOSTS.has(destinationUrl.hostname.toLowerCase())
+        ) {
+          return sendJson(response, 400, {
+            error:
+              "Bu hedef adresi güvenlik politikaları nedeniyle kullanılamaz.",
+          });
+        }
+        updates.destination = destinationUrl.toString();
+      }
+
       if (status !== undefined) updates.status = status;
       if (title !== undefined) updates.title = title;
       if (tag !== undefined) updates.tag = tag;
@@ -197,6 +237,7 @@ export default async function handler(request, response) {
       if (expiresAt !== undefined) updates.expiresAt = expiresAt;
 
       await linkRef.update(updates);
+      invalidateLinkCache(targetId);
       const updatedSnapshot = await linkRef.get();
       const updatedData = updatedSnapshot.data();
 
@@ -211,8 +252,14 @@ export default async function handler(request, response) {
     }
 
     // ── POST: Create a new link ────────────────────────────────────────
-    const { destination, slug: requestedSlug, title, tag, password, expiresAt } =
-      request.body || {};
+    const {
+      destination,
+      slug: requestedSlug,
+      title,
+      tag,
+      password,
+      expiresAt,
+    } = request.body || {};
 
     // Validate destination URL
     let destinationUrl;
@@ -237,18 +284,52 @@ export default async function handler(request, response) {
       });
     }
 
-    // Validate and normalize slug
-    const slug = normalizeSlug(requestedSlug) || createSlug();
-    if (slug.length < 3) {
-      return sendJson(response, 400, {
-        error: "Slug must contain at least 3 characters",
-      });
-    }
+    // Validate and normalize slug or auto-generate unique slug
+    let slug = normalizeSlug(requestedSlug);
+    if (slug) {
+      if (slug.length < 3) {
+        return sendJson(response, 400, {
+          error: "Özel bağlantı adı en az 3 karakter olmalıdır.",
+        });
+      }
 
-    if (RESERVED_SLUGS.has(slug)) {
-      return sendJson(response, 400, {
-        error: "This slug is reserved and cannot be used",
-      });
+      if (RESERVED_SLUGS.has(slug)) {
+        return sendJson(response, 400, {
+          error:
+            "Bu bağlantı adı sistem tarafından ayrılmıştır ve kullanılamaz.",
+        });
+      }
+
+      // Check slug uniqueness for requested custom slug
+      const id = `${host}__${slug}`;
+      const linkRef = db.collection("links").doc(id);
+      const existing = await linkRef.get();
+      if (existing.exists) {
+        return sendJson(response, 409, {
+          error: `"${slug}" bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
+        });
+      }
+    } else {
+      // Auto-generate high-entropy Base62 slug with collision avoidance loop
+      let attempts = 0;
+      let uniqueFound = false;
+      while (!uniqueFound && attempts < 10) {
+        attempts++;
+        const candidate = createSlug(7);
+        if (RESERVED_SLUGS.has(candidate)) continue;
+        const candidateId = `${host}__${candidate}`;
+        const candidateDoc = await db
+          .collection("links")
+          .doc(candidateId)
+          .get();
+        if (!candidateDoc.exists) {
+          slug = candidate;
+          uniqueFound = true;
+        }
+      }
+      if (!slug) {
+        slug = createSlug(8);
+      }
     }
 
     // ── Server-side link limit check ───────────────────────────────────
@@ -268,13 +349,7 @@ export default async function handler(request, response) {
       });
     }
 
-    // Check slug uniqueness
     const id = `${host}__${slug}`;
-    const linkRef = db.collection("links").doc(id);
-    const existing = await linkRef.get();
-    if (existing.exists) {
-      return sendJson(response, 409, { error: "This slug is already in use" });
-    }
 
     const link = {
       ownerId: user.uid,

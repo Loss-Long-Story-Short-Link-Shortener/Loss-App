@@ -1,45 +1,58 @@
-import { useState } from "react";
-import { Link2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
+import { LossNavbar } from "./components/layout/LossNavbar";
+import { LossFooter } from "./components/layout/LossFooter";
 import { Sidebar } from "./components/layout/Sidebar";
-import { Topbar } from "./components/layout/Topbar";
 
 import { ToastContainer } from "./components/common/Toast";
 
 // Pages
 import { OverviewPage } from "./pages/OverviewPage";
+import { ShortenerStudioPage } from "./pages/ShortenerStudioPage";
 import { LinksPage } from "./pages/LinksPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { QrStudioPage } from "./pages/QrStudioPage";
 import { BillingPage } from "./pages/BillingPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { RedirectPage } from "./pages/RedirectPage";
 
 // Modals
 import { CreateLinkModal } from "./components/modals/CreateLinkModal";
+import { EditLinkModal } from "./components/modals/EditLinkModal";
 import { QrDetailModal } from "./components/modals/QrDetailModal";
 import { UpgradeModal } from "./components/modals/UpgradeModal";
 import { DeleteModal } from "./components/modals/DeleteModal";
 import { AuthModal } from "./components/modals/AuthModal";
-import { RedirectPage } from "./pages/RedirectPage";
+import { BackgroundMesh } from "./components/common/BackgroundMesh";
 
 export default function App() {
-  const { authLoading, authModalOpen, setAuthModalOpen, authModalReason } = useAuth();
+  const { authLoading, authModalOpen, setAuthModalOpen, authModalReason } =
+    useAuth();
 
   // Slug route detection for client-side redirection
-  // Disabled on localhost (dev) — the Vercel API functions aren't available
-  // so the fetch returns Vite's index.html (200) which falsely triggers
-  // the "password-protected" state.
   const [redirectSlug, setRedirectSlug] = useState(() => {
     if (typeof window !== "undefined") {
-      const isLocalDev =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.hostname.startsWith("192.168.");
-
-      if (isLocalDev) return null; // never intercept slugs in local dev
-
       const path = window.location.pathname.replace(/^\/+/, "").split("/")[0];
-      const ignored = ["", "login", "register", "admin", "api", "app"];
+      const ignored = [
+        "",
+        "login",
+        "register",
+        "admin",
+        "api",
+        "app",
+        "s",
+        "shortener",
+        "link-shortener",
+        "kisalt",
+        "short",
+        "dashboard",
+        "links",
+        "analytics",
+        "qr",
+        "qrcodes",
+        "billing",
+        "settings",
+      ];
       if (path && !ignored.includes(path.toLowerCase())) {
         return path;
       }
@@ -47,32 +60,89 @@ export default function App() {
     return null;
   });
 
-  // Navigation
-  const [activePage, setActivePage] = useState("Overview");
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem("loss_sidebar_collapsed") === "true";
-    } catch {
-      return false;
+  // Navigation state initialized by pathname
+  const [activePage, setActivePage] = useState(() => {
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname.toLowerCase();
+      if (
+        p.startsWith("/s/") ||
+        p === "/s" ||
+        p === "/s/link-shortener" ||
+        p === "/link-shortener" ||
+        p === "/shortener" ||
+        p === "/short" ||
+        p === "/kisalt"
+      ) {
+        return "Shortener";
+      }
+      if (p === "/links") return "Links";
+      if (p === "/analytics") return "Analytics";
+      if (p === "/qr" || p === "/qrcodes") return "QRCodes";
+      if (p === "/billing") return "Billing";
+      if (p === "/settings") return "Settings";
     }
+    return "Overview";
   });
 
-  const toggleSidebarCollapse = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("loss_sidebar_collapsed", String(next));
-      } catch {}
-      return next;
-    });
+  const [prefilledUrl, setPrefilledUrl] = useState("");
+  const [createModalPrefill, setCreateModalPrefill] = useState({});
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  // Synchronize browser history on navigation
+  const handleNavigate = (pageName, urlParam = "") => {
+    setActivePage(pageName);
+    if (urlParam) {
+      setPrefilledUrl(urlParam);
+    }
+    if (typeof window !== "undefined") {
+      let targetPath = "/";
+      if (pageName === "Shortener") targetPath = "/link-shortener";
+      else if (pageName === "Links") targetPath = "/links";
+      else if (pageName === "Analytics") targetPath = "/analytics";
+      else if (pageName === "QRCodes") targetPath = "/qrcodes";
+      else if (pageName === "Billing") targetPath = "/billing";
+      else if (pageName === "Settings") targetPath = "/settings";
+      window.history.pushState({}, "", targetPath);
+    }
   };
+
+  // Listen to popstate (browser back/forward)
+  useEffect(() => {
+    const onPop = () => {
+      const p = window.location.pathname.toLowerCase();
+      if (
+        p.startsWith("/s/") ||
+        p === "/s" ||
+        p === "/s/link-shortener" ||
+        p === "/link-shortener" ||
+        p === "/shortener" ||
+        p === "/short" ||
+        p === "/kisalt"
+      ) {
+        setActivePage("Shortener");
+      } else if (p === "/links") setActivePage("Links");
+      else if (p === "/analytics") setActivePage("Analytics");
+      else if (p === "/qr" || p === "/qrcodes") setActivePage("QRCodes");
+      else if (p === "/billing") setActivePage("Billing");
+      else if (p === "/settings") setActivePage("Settings");
+      else setActivePage("Overview");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // Modal States
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalLink, setEditModalLink] = useState(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [qrModalLink, setQrModalLink] = useState(null);
   const [deleteModalLink, setDeleteModalLink] = useState(null);
+
+  const openCreateModal = (prefill = {}) => {
+    setCreateModalPrefill(prefill);
+    setCreateModalOpen(true);
+  };
 
   if (redirectSlug) {
     return (
@@ -88,94 +158,109 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          background: "var(--bg-app)",
-          color: "var(--text-secondary)",
-          gap: "14px",
-        }}
-      >
-        <img
-          src="/loss.png"
-          alt="Long Story Short"
-          style={{ width: "36px", height: "36px", objectFit: "contain" }}
-        />
-        <span style={{ fontSize: "12px", fontWeight: 600 }}>
-          Yükleniyor...
-        </span>
+      <div className="loss-loading-screen">
+        <div className="loss-loader-pulse">
+          <img
+            src="/loss.png"
+            alt="loss.tr"
+            style={{ width: "48px", height: "48px", objectFit: "contain" }}
+          />
+        </div>
+        <span className="loss-loader-text">loss.tr yükleniyor...</span>
       </div>
     );
   }
 
+  const isHome = activePage === "Overview";
+
   return (
-    <div className="app-shell">
-      {/* Sidebar */}
-      <Sidebar
+    <div
+      className={`loss-app-root ${isHome ? "landing-mode" : "dashboard-mode"}`}
+    >
+      {/* Ambient BypaxDPI Glowing Backdrop */}
+      <BackgroundMesh />
+
+      {/* Floating Capsule Navigation */}
+      <LossNavbar
         activePage={activePage}
-        onSelectPage={setActivePage}
+        onSelectPage={handleNavigate}
         onOpenCreateModal={() => setCreateModalOpen(true)}
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebarCollapse}
+        onToggleSidebar={() => setMobileOpen((v) => !v)}
       />
 
-      {/* Main Content Area */}
-      <div className="main-area">
-        <Topbar
-          onOpenMobile={() => setMobileOpen(true)}
-          onOpenCreateModal={() => setCreateModalOpen(true)}
-          onSelectPage={setActivePage}
-        />
-
-        <main className="page-container">
-          {activePage === "Overview" && (
-            <OverviewPage
-              onOpenCreateModal={() => setCreateModalOpen(true)}
-              onOpenQr={(link) => setQrModalLink(link)}
-              onDeleteRequest={(link) => setDeleteModalLink(link)}
-              onNavigate={setActivePage}
-            />
-          )}
-
-          {activePage === "Links" && (
-            <LinksPage
-              onOpenCreateModal={() => setCreateModalOpen(true)}
-              onOpenQr={(link) => setQrModalLink(link)}
-              onDeleteRequest={(link) => setDeleteModalLink(link)}
-            />
-          )}
-
-          {activePage === "Analytics" && <AnalyticsPage />}
-
-          {activePage === "QRCodes" && (
-            <QrStudioPage
-              onOpenCreateModal={() => setCreateModalOpen(true)}
-              onOpenQr={(link) => setQrModalLink(link)}
-            />
-          )}
-
-
-          {activePage === "Billing" && <BillingPage />}
-
-          {activePage === "Settings" && <SettingsPage />}
+      {isHome ? (
+        /* Full width Website Presentation */
+        <main className="loss-main-content">
+          <OverviewPage
+            onOpenCreateModal={openCreateModal}
+            onOpenQr={(link) => setQrModalLink(link)}
+            onDeleteRequest={(link) => setDeleteModalLink(link)}
+            onNavigate={handleNavigate}
+          />
         </main>
+      ) : (
+        /* Dashboard App Shell for Workspaces (Shortener, Links, Analytics, QR, Billing, Settings) */
+        <div className="loss-subpage-shell">
+          <div className="loss-subpage-container">
+            {activePage === "Shortener" && (
+              <ShortenerStudioPage
+                initialUrl={prefilledUrl}
+                onOpenCreateModal={openCreateModal}
+                onOpenQr={(link) => setQrModalLink(link)}
+                onEditRequest={(link) => setEditModalLink(link)}
+                onDeleteRequest={(link) => setDeleteModalLink(link)}
+                onNavigate={handleNavigate}
+              />
+            )}
 
-      </div>
+            {activePage === "Links" && (
+              <LinksPage
+                onOpenCreateModal={openCreateModal}
+                onOpenQr={(link) => setQrModalLink(link)}
+                onEditRequest={(link) => setEditModalLink(link)}
+                onDeleteRequest={(link) => setDeleteModalLink(link)}
+              />
+            )}
+
+            {activePage === "Analytics" && <AnalyticsPage />}
+
+            {activePage === "QRCodes" && (
+              <QrStudioPage
+                onOpenCreateModal={openCreateModal}
+                onOpenQr={(link) => setQrModalLink(link)}
+              />
+            )}
+
+            {activePage === "Billing" && <BillingPage />}
+
+            {activePage === "Settings" && <SettingsPage />}
+          </div>
+        </div>
+      )}
+
+      {/* Modern Footer */}
+      <LossFooter onSelectPage={handleNavigate} />
 
       {/* Modals */}
       <CreateLinkModal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setCreateModalPrefill({});
+        }}
+        initialUrl={createModalPrefill.initialUrl}
+        initialSlug={createModalPrefill.initialSlug}
+        onOpenQr={(link) => setQrModalLink(link)}
         onOpenUpgradeModal={() => {
           setCreateModalOpen(false);
           setUpgradeModalOpen(true);
         }}
+      />
+
+      <EditLinkModal
+        isOpen={Boolean(editModalLink)}
+        onClose={() => setEditModalLink(null)}
+        link={editModalLink}
       />
 
       <QrDetailModal
@@ -194,7 +279,6 @@ export default function App() {
         onClose={() => setDeleteModalLink(null)}
         link={deleteModalLink}
       />
-
 
       <AuthModal
         isOpen={authModalOpen}

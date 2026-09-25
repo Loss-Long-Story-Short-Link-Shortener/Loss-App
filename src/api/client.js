@@ -10,13 +10,20 @@
  */
 
 import { storage } from "../utils/storage";
+import { SHORT_LINK_HOST, getShortUrl } from "../constants/domains";
 import { auth, db } from "../firebase";
+import {
+  generateSecureSlug,
+  validateCustomSlug,
+  SYSTEM_RESERVED_SLUGS,
+} from "../utils/slugGenerator";
 import {
   collection,
   query,
   where,
   orderBy,
   getDocs,
+  getDoc,
   doc,
   deleteDoc,
   setDoc,
@@ -104,7 +111,7 @@ export const api = {
             ...data,
             // Mask password in client
             password: data.password ? "••••••" : "",
-            shortUrl: `https://loss.tr/${data.slug}`,
+            shortUrl: getShortUrl(data.slug),
           };
         });
       } catch (err) {
@@ -128,7 +135,8 @@ export const api = {
     // ── Real user → backend API (or client Firestore fallback) ─────────
     if (user && !user.isDemo) {
       const token = await getToken(user);
-      if (!token) throw new Error("Oturum süresi dolmuş. Lütfen tekrar giriş yapın.");
+      if (!token)
+        throw new Error("Oturum süresi dolmuş. Lütfen tekrar giriş yapın.");
 
       const apiUrl = API_BASE || "";
       if (apiUrl) {
@@ -141,20 +149,47 @@ export const api = {
           const data = await readResponse(res);
           return data.link;
         } catch (apiErr) {
-          console.warn("Backend API unavailable, falling back to direct Firestore:", apiErr.message);
+          console.warn(
+            "Backend API unavailable, falling back to direct Firestore:",
+            apiErr.message,
+          );
         }
       }
 
       // Direct Firestore creation fallback for authenticated user
       if (db) {
-        let slug = (payload.slug || "")
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9_-]/g, "");
-        if (!slug) {
-          slug = Math.random().toString(36).substring(2, 8);
+        let slug = (payload.slug || "").trim().toLowerCase();
+        const host = SHORT_LINK_HOST;
+
+        if (slug) {
+          const validation = validateCustomSlug(slug);
+          if (!validation.valid) throw new Error(validation.error);
+
+          const checkSnap = await getDoc(doc(db, "links", `${host}__${slug}`));
+          if (checkSnap.exists()) {
+            throw new Error(
+              `"${slug}" bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
+            );
+          }
+        } else {
+          // Auto-generate unique Base62 slug with collision avoidance
+          let attempts = 0;
+          let found = false;
+          while (!found && attempts < 10) {
+            attempts++;
+            const candidate = generateSecureSlug(7);
+            if (SYSTEM_RESERVED_SLUGS.has(candidate.toLowerCase())) continue;
+            const checkSnap = await getDoc(
+              doc(db, "links", `${host}__${candidate.toLowerCase()}`),
+            );
+            if (!checkSnap.exists()) {
+              slug = candidate;
+              found = true;
+            }
+          }
+          if (!slug) slug = generateSecureSlug(8);
         }
-        const host = "loss.tr";
+
         const docId = `${host}__${slug}`;
         const newLink = {
           ownerId: user.uid,
@@ -163,7 +198,7 @@ export const api = {
           title: payload.title || new URL(payload.destination).hostname,
           tag: payload.tag || "",
           destination: payload.destination,
-          shortUrl: `https://${host}/${slug}`,
+          shortUrl: getShortUrl(slug),
           status: "active",
           clickCount: 0,
           password: payload.password ? "••••••" : "",
@@ -177,31 +212,65 @@ export const api = {
     }
 
     // ── Demo / guest → localStorage + Firestore single canonical doc ───
-    let slug = (payload.slug || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, "");
-    if (!slug) {
-      slug = Math.random().toString(36).substring(2, 8);
-    }
-
     const existing = storage.getDemoLinks() || [];
-    if (existing.some((l) => l.slug?.toLowerCase() === slug)) {
-      throw new Error(
-        `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
-      );
+    let slug = (payload.slug || "").trim().toLowerCase();
+    const host = SHORT_LINK_HOST;
+
+    if (slug) {
+      const validation = validateCustomSlug(slug);
+      if (!validation.valid) throw new Error(validation.error);
+
+      if (existing.some((l) => l.slug?.toLowerCase() === slug)) {
+        throw new Error(
+          `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
+        );
+      }
+      if (db) {
+        try {
+          const snap = await getDoc(doc(db, "links", `${host}__${slug}`));
+          if (snap.exists()) {
+            throw new Error(
+              `"${slug}" özel bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
+            );
+          }
+        } catch (e) {
+          if (e.message && e.message.includes("kullanımda")) throw e;
+        }
+      }
+    } else {
+      let attempts = 0;
+      let found = false;
+      while (!found && attempts < 10) {
+        attempts++;
+        const candidate = generateSecureSlug(7);
+        if (SYSTEM_RESERVED_SLUGS.has(candidate.toLowerCase())) continue;
+        const existsInLocal = existing.some(
+          (l) => l.slug?.toLowerCase() === candidate.toLowerCase(),
+        );
+        if (!existsInLocal) {
+          slug = candidate;
+          found = true;
+        }
+      }
+      if (!slug) slug = generateSecureSlug(8);
     }
 
-    const host = "loss.tr";
     const docId = `${host}__${slug}`;
+    let domainHost = "";
+    try {
+      domainHost = new URL(payload.destination).hostname;
+    } catch {
+      domainHost = "link";
+    }
+
     const newLink = {
       id: docId,
       domain: host,
       slug,
-      title: payload.title || new URL(payload.destination).hostname,
+      title: payload.title || domainHost,
       tag: payload.tag || "",
       destination: payload.destination,
-      shortUrl: `https://${host}/${slug}`,
+      shortUrl: getShortUrl(slug),
       status: "active",
       clickCount: 0,
       password: payload.password ? "••••••" : "",
@@ -212,24 +281,22 @@ export const api = {
 
     // Save canonical document to Firestore so it works for anyone redirecting
     if (db) {
-      try {
-        await setDoc(doc(db, "links", docId), {
-          ownerId: user?.uid || "guest",
-          domain: host,
-          slug,
-          title: newLink.title,
-          tag: newLink.tag || "",
-          destination: newLink.destination,
-          status: "active",
-          clickCount: 0,
-          password: payload.password || "",
-          expiresAt: newLink.expiresAt || "",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      } catch (err) {
+      setDoc(doc(db, "links", docId), {
+        ownerId: user?.uid || "guest",
+        domain: host,
+        slug,
+        title: newLink.title,
+        tag: newLink.tag || "",
+        destination: newLink.destination,
+        status: "active",
+        clickCount: 0,
+        password: payload.password || "",
+        expiresAt: newLink.expiresAt || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }).catch((err) => {
         console.warn("Firestore guest sync warning:", err);
-      }
+      });
     }
 
     storage.setDemoLinks([newLink, ...existing]);
@@ -241,25 +308,25 @@ export const api = {
    * Permanently removes from Firestore, backend API and localStorage.
    */
   async deleteLink(user, linkId, linkObj) {
-    const slug = linkObj?.slug || (linkId.includes("__") ? linkId.split("__").pop() : linkId);
+    const slug =
+      linkObj?.slug ||
+      (linkId.includes("__") ? linkId.split("__").pop() : linkId);
 
-    // ── 1. Direct Firestore Deletion (guarantees removal from Firebase) ──
-    if (db) {
+    // ── 1. Direct Firestore deletion when no dedicated API is configured ──
+    if ((!user || user.isDemo || !API_BASE) && db) {
       try {
         // Delete exact document ID
         await deleteDoc(doc(db, "links", linkId)).catch(() => {});
 
         // Also clean up any legacy multi-host prefixed document keys
         const legacyCandidates = [
-          `loss.tr__${slug}`,
+          `${SHORT_LINK_HOST}__${slug}`,
           `loss.consolaktif.com.tr__${slug}`,
           `go.consolaktif.com.tr__${slug}`,
           slug,
         ];
         await Promise.allSettled(
-          legacyCandidates.map((candId) =>
-            deleteDoc(doc(db, "links", candId))
-          )
+          legacyCandidates.map((candId) => deleteDoc(doc(db, "links", candId))),
         );
       } catch (err) {
         console.warn("Firestore direct delete warning:", err);
@@ -268,25 +335,25 @@ export const api = {
 
     // ── 2. Real user → backend API (Server-side Admin SDK deletion) ────
     if (user && !user.isDemo) {
-      try {
+      if (API_BASE) {
         const token = await getToken(user);
-        if (token) {
-          const apiUrl = API_BASE || "";
-          await fetch(`${apiUrl}/api/links`, {
-            method: "DELETE",
-            headers: authHeaders(token),
-            body: JSON.stringify({ id: linkId, slug }),
-          });
-        }
-      } catch (apiErr) {
-        console.warn("Backend API delete warning:", apiErr);
+        if (!token) throw new Error("Oturum süresi dolmuş.");
+        const res = await fetch(`${API_BASE}/api/links`, {
+          method: "DELETE",
+          headers: authHeaders(token),
+          body: JSON.stringify({ id: linkId, slug }),
+        });
+        await readResponse(res);
+      } else if (!db) {
+        throw new Error("Bağlantı silinemedi: veri hizmeti yapılandırılmamış.");
       }
     }
 
     // ── 3. Clean up localStorage ───────────────────────────────────────
     const existing = storage.getDemoLinks() || [];
     const filtered = existing.filter(
-      (l) => l.id !== linkId && l.slug !== slug && !linkId.endsWith(`__${l.slug}`)
+      (l) =>
+        l.id !== linkId && l.slug !== slug && !linkId.endsWith(`__${l.slug}`),
     );
     storage.setDemoLinks(filtered);
 
@@ -294,9 +361,9 @@ export const api = {
   },
 
   /**
-   * PATCH /api/links — Update a link's status, title, etc.
+   * PATCH /api/links — Update a link's destination, status, title, etc.
    */
-  async updateLinkStatus(user, linkId, status) {
+  async updateLink(user, linkId, updates = {}) {
     // ── Real user → backend API ────────────────────────────────────────
     if (user && !user.isDemo) {
       const token = await getToken(user);
@@ -306,7 +373,7 @@ export const api = {
       const res = await fetch(`${apiUrl}/api/links`, {
         method: "PATCH",
         headers: authHeaders(token),
-        body: JSON.stringify({ id: linkId, status }),
+        body: JSON.stringify({ id: linkId, ...updates }),
       });
       return await readResponse(res);
     }
@@ -317,12 +384,46 @@ export const api = {
       l.id === linkId
         ? {
             ...l,
-            status,
+            ...updates,
             updatedAt: { seconds: Math.floor(Date.now() / 1000) },
           }
         : l,
     );
     storage.setDemoLinks(updated);
-    return { success: true, status };
+    return { success: true, link: { id: linkId, ...updates } };
+  },
+
+  /**
+   * PATCH /api/links — Update a link's status.
+   */
+  async updateLinkStatus(user, linkId, status) {
+    return this.updateLink(user, linkId, { status });
+  },
+
+  /**
+   * POST /api/billing/paytr-token — Initialize PayTR checkout session
+   */
+  async createPaytrCheckout(user, tier, billingPeriod = "monthly") {
+    if (!user || user.isDemo) {
+      return {
+        isDemoSimulation: true,
+        tier,
+        billingPeriod,
+        amountTl: tier === "starter" ? 399 : tier === "pro" ? 899 : 2499,
+      };
+    }
+
+    const token = await getToken(user);
+    if (!token)
+      throw new Error("Oturum süresi dolmuş. Lütfen tekrar giriş yapın.");
+
+    const apiUrl = API_BASE || "";
+    const res = await fetch(`${apiUrl}/api/billing/paytr-token`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ tier, billingPeriod }),
+    });
+
+    return await readResponse(res);
   },
 };

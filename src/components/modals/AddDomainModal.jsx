@@ -2,11 +2,15 @@ import { useState } from "react";
 import { Globe2, Check, ArrowRight } from "lucide-react";
 import { Modal } from "../common/Modal";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 export function AddDomainModal({ isOpen, onClose }) {
   const { currentTier, showToast } = useAuth();
+  const { locale, t } = useLanguage();
   const [domainName, setDomainName] = useState("");
   const [step, setStep] = useState(1);
+
+  const c = t.common || {};
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -15,7 +19,12 @@ export function AddDomainModal({ isOpen, onClose }) {
   };
 
   const handleComplete = () => {
-    showToast(`${domainName} alan adı başarıyla eklendi ve DNS doğrulaması başlatıldı!`, "success");
+    showToast(
+      locale === "tr"
+        ? `${domainName} alan adı başarıyla eklendi ve DNS doğrulaması başlatıldı!`
+        : `${domainName} was added successfully and DNS verification initiated!`,
+      "success"
+    );
     setDomainName("");
     setStep(1);
     onClose();
@@ -28,14 +37,24 @@ export function AddDomainModal({ isOpen, onClose }) {
         setStep(1);
         onClose();
       }}
-      title="Yeni Özel Alan Adı Ekle"
-      subtitle="Kendi markanıza ait alt alan adını (örn: link.markaniz.com) bağlayın."
+      title={
+        locale === "tr" ? "Yeni Özel Alan Adı Ekle" : "Connect Custom Domain"
+      }
+      subtitle={
+        locale === "tr"
+          ? "Kendi markanıza ait alt alan adını (örn: link.markaniz.com) bağlayın."
+          : "Connect your branded custom subdomain (e.g. link.yourbrand.com)."
+      }
       maxWidth="520px"
     >
       {step === 1 ? (
         <form onSubmit={handleAdd}>
           <div className="form-group">
-            <label className="form-label">Alan Adı (Subdomain önerilir)</label>
+            <label className="form-label">
+              {locale === "tr"
+                ? "Alan Adı (Subdomain önerilir)"
+                : "Domain Name (Subdomain recommended)"}
+            </label>
             <input
               type="text"
               className="input-text"
@@ -58,33 +77,46 @@ export function AddDomainModal({ isOpen, onClose }) {
               marginBottom: "20px",
             }}
           >
-            💡 <strong>İpucu:</strong> Alan adınızı ekledikten sonra DNS sağlayıcınızdan (Cloudflare, GoDaddy, Natro vb.) bir <code>CNAME</code> kaydı eklemeniz gerekecektir.
+            💡 <strong>{locale === "tr" ? "İpucu:" : "Tip:"}</strong>{" "}
+            {locale === "tr"
+              ? "Alan adınızı ekledikten sonra DNS sağlayıcınızdan (Cloudflare, GoDaddy, Natro vb.) bir CNAME kaydı eklemeniz gerekecektir."
+              : "After adding your domain, add a CNAME record at your DNS provider (Cloudflare, GoDaddy, Namecheap, etc.)."}
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              İptal
+              {c.cancel || "İptal"}
             </button>
             <button type="submit" className="btn btn-primary">
-              İlerle <ArrowRight size={15} />
+              {locale === "tr" ? "İlerle" : "Next"} <ArrowRight size={15} />
             </button>
           </div>
         </form>
       ) : (
         <div>
           <h4 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px" }}>
-            DNS Yapılandırma Talimatı:
+            {locale === "tr"
+              ? "DNS Yapılandırma Talimatı:"
+              : "DNS Configuration Instructions:"}
           </h4>
           <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-            <strong>{domainName}</strong> alan adı için DNS panelinizde aşağıdaki CNAME kaydını oluşturun:
+            {locale === "tr" ? (
+              <>
+                <strong>{domainName}</strong> alan adı için DNS panelinizde aşağıdaki CNAME kaydını oluşturun:
+              </>
+            ) : (
+              <>
+                Create the following CNAME record in your DNS provider for <strong>{domainName}</strong>:
+              </>
+            )}
           </p>
 
           <table className="dns-table" style={{ width: "100%", marginBottom: "20px" }}>
             <thead>
               <tr>
-                <th>Kayıt Türü</th>
-                <th>Ad / Host</th>
-                <th>Değer / Hedef</th>
+                <th>{locale === "tr" ? "Kayıt Türü" : "Type"}</th>
+                <th>{locale === "tr" ? "Ad / Host" : "Host / Name"}</th>
+                <th>{locale === "tr" ? "Değer / Hedef" : "Target / Value"}</th>
                 <th>TTL</th>
               </tr>
             </thead>
@@ -93,14 +125,15 @@ export function AddDomainModal({ isOpen, onClose }) {
                 <td>CNAME</td>
                 <td>{domainName.split(".")[0] || "@"}</td>
                 <td>cname.loss.tr</td>
-                <td>Otomatik</td>
+                <td>{locale === "tr" ? "Otomatik" : "Auto"}</td>
               </tr>
             </tbody>
           </table>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
             <button className="btn btn-primary" onClick={handleComplete}>
-              <Check size={15} /> Kaydı Doğrula & Kaydet
+              <Check size={15} />{" "}
+              {locale === "tr" ? "Kaydı Doğrula & Kaydet" : "Verify & Save Record"}
             </button>
           </div>
         </div>

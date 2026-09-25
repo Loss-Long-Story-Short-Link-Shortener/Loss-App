@@ -1,4 +1,5 @@
 import { Search, Filter } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 export function LinkFilters({
   searchQuery,
@@ -8,13 +9,16 @@ export function LinkFilters({
   sortBy,
   onSortChange,
 }) {
+  const { t } = useLanguage();
+  const lt = t.linksTable || {};
+
   return (
     <div className="filter-bar">
       <div className="search-input-wrap">
         <Search size={16} color="var(--text-muted)" />
         <input
           type="text"
-          placeholder="Slug, başlık veya hedef URL ara..."
+          placeholder={lt.searchPlaceholder || "Slug, başlık veya hedef URL ara..."}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
         />
@@ -27,9 +31,9 @@ export function LinkFilters({
           value={statusFilter}
           onChange={(e) => onStatusFilterChange(e.target.value)}
         >
-          <option value="all">Tüm Durumlar</option>
-          <option value="active">Yalnızca Aktif</option>
-          <option value="paused">Duraklatılanlar</option>
+          <option value="all">{lt.filterAll || "Tüm Durumlar"}</option>
+          <option value="active">{lt.filterActive || "Yalnızca Aktif"}</option>
+          <option value="paused">{lt.filterPaused || "Duraklatılanlar"}</option>
         </select>
 
         <select
@@ -38,9 +42,9 @@ export function LinkFilters({
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value)}
         >
-          <option value="newest">En Yeni Oluşturulan</option>
-          <option value="clicks">En Çok Tıklanan</option>
-          <option value="title">Başlığa Göre (A-Z)</option>
+          <option value="newest">{lt.sortNewest || "En Yeni Oluşturulan"}</option>
+          <option value="clicks">{lt.sortClicks || "En Çok Tıklanan"}</option>
+          <option value="title">{lt.sortTitle || "Başlığa Göre (A-Z)"}</option>
         </select>
       </div>
     </div>

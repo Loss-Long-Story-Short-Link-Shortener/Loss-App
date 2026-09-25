@@ -9,15 +9,30 @@ import {
   Save,
   Check,
   CreditCard,
+  Languages,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import { TIERS } from "../constants/tiers";
+import { SHORT_LINK_HOST } from "../constants/domains";
 
 export function SettingsPage() {
-  const { user, currentTier, theme, setTheme, updateUserProfile, links, showToast } = useAuth();
+  const {
+    user,
+    currentTier,
+    theme,
+    setTheme,
+    updateUserProfile,
+    links,
+    showToast,
+  } = useAuth();
+  const { t, locale, setLocale } = useLanguage();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const s = t.settings || {};
+  const c = t.common || {};
 
   const tierMeta = TIERS[currentTier] || TIERS.free;
   const userInitials = (user?.displayName || user?.email || "U")
@@ -27,7 +42,10 @@ export function SettingsPage() {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!displayName.trim()) {
-      showToast("Lütfen bir isim girin", "error");
+      showToast(
+        locale === "tr" ? "Lütfen bir isim girin" : "Please enter a name",
+        "error",
+      );
       return;
     }
     setSaving(true);
@@ -37,8 +55,12 @@ export function SettingsPage() {
       }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2500);
+      showToast(s.saved || "Kaydedildi", "success");
     } catch {
-      showToast("Profil kaydedilemedi", "error");
+      showToast(
+        locale === "tr" ? "Profil kaydedilemedi" : "Could not save profile",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -47,9 +69,10 @@ export function SettingsPage() {
   return (
     <div className="settings-page-wrapper">
       <div className="settings-header">
-        <h1 className="settings-title">Ayarlar & Profil</h1>
+        <h1 className="settings-title">{s.title || "Ayarlar & Profil"}</h1>
         <p className="settings-subtitle">
-          Hesap bilgilerinizi, görünüm tercihlerinizi ve bağlantı ayarlarınızı yönetin.
+          {s.subtitle ||
+            "Hesap bilgilerinizi, görünüm tercihlerinizi ve bağlantı ayarlarınızı yönetin."}
         </p>
       </div>
 
@@ -60,19 +83,25 @@ export function SettingsPage() {
             <div className="settings-card-title-group">
               <User size={18} className="settings-card-icon" />
               <div>
-                <h2 className="settings-card-title">Profil Bilgileri</h2>
-                <p className="settings-card-desc">Kişisel profilinizi ve görünen adınızı güncelleyin</p>
+                <h2 className="settings-card-title">
+                  {s.profileTitle || "Profil Bilgileri"}
+                </h2>
+                <p className="settings-card-desc">
+                  {s.profileDesc ||
+                    "Kişisel profilinizi ve görünen adınızı güncelleyin"}
+                </p>
               </div>
             </div>
           </div>
 
           <form onSubmit={handleSaveProfile} className="settings-card-body">
             <div className="settings-profile-row">
-              <div className="settings-avatar-preview">
-                {userInitials}
-              </div>
+              <div className="settings-avatar-preview">{userInitials}</div>
               <div className="settings-avatar-info">
-                <span className="settings-avatar-name">{user?.displayName || "İsimsiz Kullanıcı"}</span>
+                <span className="settings-avatar-name">
+                  {user?.displayName ||
+                    (locale === "tr" ? "İsimsiz Kullanıcı" : "Anonymous User")}
+                </span>
                 <span className="settings-avatar-tier">
                   <Sparkles size={11} /> {tierMeta.name} Plan
                 </span>
@@ -80,18 +109,22 @@ export function SettingsPage() {
             </div>
 
             <div className="settings-form-field">
-              <label className="settings-label">Görünen İsim</label>
+              <label className="settings-label">
+                {s.displayName || "Görünen İsim"}
+              </label>
               <input
                 type="text"
                 className="settings-input"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Adınız Soyadınız"
+                placeholder={s.displayNamePlaceholder || "Adınız Soyadınız"}
               />
             </div>
 
             <div className="settings-form-field">
-              <label className="settings-label">E-Posta Adresi</label>
+              <label className="settings-label">
+                {s.email || "E-Posta Adresi"}
+              </label>
               <div className="settings-input-with-badge">
                 <input
                   type="email"
@@ -100,7 +133,7 @@ export function SettingsPage() {
                   disabled
                 />
                 <span className="settings-verified-badge">
-                  <ShieldCheck size={13} /> Doğrulandı
+                  <ShieldCheck size={13} /> {s.verified || "Doğrulandı"}
                 </span>
               </div>
             </div>
@@ -113,11 +146,14 @@ export function SettingsPage() {
               >
                 {savedSuccess ? (
                   <>
-                    <Check size={14} /> Kaydedildi
+                    <Check size={14} /> {s.saved || "Kaydedildi"}
                   </>
                 ) : (
                   <>
-                    <Save size={14} /> {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+                    <Save size={14} />{" "}
+                    {saving
+                      ? s.saving || "Kaydediliyor..."
+                      : s.saveChanges || "Değişiklikleri Kaydet"}
                   </>
                 )}
               </button>
@@ -131,8 +167,12 @@ export function SettingsPage() {
             <div className="settings-card-title-group">
               <Sun size={18} className="settings-card-icon" />
               <div>
-                <h2 className="settings-card-title">Görünüm & Tema</h2>
-                <p className="settings-card-desc">Uygulamanın renk temasını belirleyin</p>
+                <h2 className="settings-card-title">
+                  {s.appearanceTitle || "Görünüm & Tema"}
+                </h2>
+                <p className="settings-card-desc">
+                  {s.appearanceDesc || "Uygulamanın renk temasını belirleyin"}
+                </p>
               </div>
             </div>
           </div>
@@ -148,10 +188,16 @@ export function SettingsPage() {
                   <Moon size={20} />
                 </div>
                 <div className="settings-theme-info">
-                  <span className="settings-theme-label">Koyu Mod</span>
-                  <span className="settings-theme-sub">Derin siyah estetik</span>
+                  <span className="settings-theme-label">
+                    {s.darkMod || "Koyu Mod"}
+                  </span>
+                  <span className="settings-theme-sub">
+                    {s.darkModDesc || "Derin siyah estetik"}
+                  </span>
                 </div>
-                {theme === "dark" && <Check size={16} className="settings-theme-check" />}
+                {theme === "dark" && (
+                  <Check size={16} className="settings-theme-check" />
+                )}
               </button>
 
               <button
@@ -163,10 +209,89 @@ export function SettingsPage() {
                   <Sun size={20} />
                 </div>
                 <div className="settings-theme-info">
-                  <span className="settings-theme-label">Aydınlık Mod</span>
-                  <span className="settings-theme-sub">Ferah beyaz arayüz</span>
+                  <span className="settings-theme-label">
+                    {s.lightMod || "Aydınlık Mod"}
+                  </span>
+                  <span className="settings-theme-sub">
+                    {s.lightModDesc || "Ferah beyaz arayüz"}
+                  </span>
                 </div>
-                {theme === "light" && <Check size={16} className="settings-theme-check" />}
+                {theme === "light" && (
+                  <Check size={16} className="settings-theme-check" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Language Selection Card */}
+        <div className="settings-card">
+          <div className="settings-card-header">
+            <div className="settings-card-title-group">
+              <Languages size={18} className="settings-card-icon" />
+              <div>
+                <h2 className="settings-card-title">
+                  {s.langTitle || "Dil Seçimi"}
+                </h2>
+                <p className="settings-card-desc">
+                  {s.langDesc || "Uygulamanın kullanım dilini belirleyin"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-card-body">
+            <div className="settings-theme-switcher-grid">
+              <button
+                type="button"
+                className={`settings-theme-option-card ${locale === "tr" ? "active" : ""}`}
+                onClick={() => setLocale("tr")}
+              >
+                <div
+                  className="settings-theme-preview"
+                  style={{
+                    background: "rgba(59, 164, 255, 0.1)",
+                    color: "#3ba4ff",
+                    fontWeight: 800,
+                  }}
+                >
+                  TR
+                </div>
+                <div className="settings-theme-info">
+                  <span className="settings-theme-label">Türkçe</span>
+                  <span className="settings-theme-sub">
+                    Doğal & akıcı Türkçe
+                  </span>
+                </div>
+                {locale === "tr" && (
+                  <Check size={16} className="settings-theme-check" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                className={`settings-theme-option-card ${locale === "en" ? "active" : ""}`}
+                onClick={() => setLocale("en")}
+              >
+                <div
+                  className="settings-theme-preview"
+                  style={{
+                    background: "rgba(74, 222, 128, 0.1)",
+                    color: "#4ade80",
+                    fontWeight: 800,
+                  }}
+                >
+                  EN
+                </div>
+                <div className="settings-theme-info">
+                  <span className="settings-theme-label">English</span>
+                  <span className="settings-theme-sub">
+                    Natural British / US English
+                  </span>
+                </div>
+                {locale === "en" && (
+                  <Check size={16} className="settings-theme-check" />
+                )}
               </button>
             </div>
           </div>
@@ -178,18 +303,28 @@ export function SettingsPage() {
             <div className="settings-card-title-group">
               <Globe2 size={18} className="settings-card-icon" />
               <div>
-                <h2 className="settings-card-title">Bağlantı & Domain Tercihleri</h2>
-                <p className="settings-card-desc">Varsayılan kısa link yönlendirme ayarları</p>
+                <h2 className="settings-card-title">
+                  {s.domainTitle || "Bağlantı & Domain Tercihleri"}
+                </h2>
+                <p className="settings-card-desc">
+                  {s.domainDesc || "Varsayılan kısa link yönlendirme ayarları"}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="settings-card-body">
             <div className="settings-form-field">
-              <label className="settings-label">Varsayılan Kısa Link Alan Adı</label>
+              <label className="settings-label">
+                {s.defaultDomain || "Varsayılan Kısa Link Alan Adı"}
+              </label>
               <div className="settings-domain-display">
-                <span className="settings-domain-host">https://loss.tr/</span>
-                <span className="settings-domain-badge">Varsayılan & Aktif</span>
+                <span className="settings-domain-host">
+                  https://{SHORT_LINK_HOST}/
+                </span>
+                <span className="settings-domain-badge">
+                  {s.defaultDomainActive || "Varsayılan & Aktif"}
+                </span>
               </div>
             </div>
           </div>
@@ -201,8 +336,12 @@ export function SettingsPage() {
             <div className="settings-card-title-group">
               <CreditCard size={18} className="settings-card-icon" />
               <div>
-                <h2 className="settings-card-title">Abonelik & Kota Durumu</h2>
-                <p className="settings-card-desc">Kullanım limitleri ve aktif paket detayları</p>
+                <h2 className="settings-card-title">
+                  {s.planTitle || "Abonelik & Kota Durumu"}
+                </h2>
+                <p className="settings-card-desc">
+                  {s.planDesc || "Kullanım limitleri ve aktif paket detayları"}
+                </p>
               </div>
             </div>
           </div>
@@ -210,14 +349,18 @@ export function SettingsPage() {
           <div className="settings-card-body">
             <div className="settings-plan-box">
               <div className="settings-plan-top">
-                <span className="settings-plan-name">{tierMeta.name} Paket</span>
-                <span className="settings-plan-price">{tierMeta.priceMonthly}₺ / ay</span>
+                <span className="settings-plan-name">{tierMeta.name}</span>
+                <span className="settings-plan-price">
+                  {tierMeta.priceMonthly}₺ {t.billing?.perMonth || "/ ay"}
+                </span>
               </div>
               <p className="settings-plan-desc">{tierMeta.description}</p>
-              
+
               <div className="settings-usage-row">
-                <span>Link Kotası:</span>
-                <strong>{links.length} / {tierMeta.maxLinks} bağlantı</strong>
+                <span>{s.linkQuota || "Link Kotası:"}</span>
+                <strong>
+                  {links.length} / {tierMeta.maxLinks} {s.used || "bağlantı"}
+                </strong>
               </div>
             </div>
           </div>
