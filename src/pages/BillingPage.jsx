@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Check, X, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
+import { Check, X, Sparkles, ShieldCheck, Loader2 } from "lucide-react";
 import { TIERS } from "../constants/tiers";
+import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { PaytrModal } from "../components/modals/PaytrModal";
 
 export function BillingPage() {
-  const { currentTier, setCurrentTier, billingPeriod, setBillingPeriod, showToast } =
+  const { user, currentTier, plan, refreshPlan, billingPeriod, setBillingPeriod, showToast } =
     useAuth();
   const { t, locale } = useLanguage();
 
@@ -16,14 +17,40 @@ export function BillingPage() {
   const b = t.billing || {};
   const p = t.pricing || {};
 
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const subscription = plan?.subscription;
+  const renewalDate = subscription?.nextBillingAt
+    ? new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", { dateStyle: "long" }).format(subscription.nextBillingAt)
+    : null;
+
   const handleSelectTier = (tierKey) => {
     if (tierKey === "free") {
-      setCurrentTier("free");
-      showToast(b.freeSwitched || "Ücretsiz plana geçildi", "info");
+      // Downgrading means cancelling the paid subscription at period end.
+      if (currentTier !== "free" && !subscription?.cancelAtPeriodEnd) setConfirmCancel(true);
       return;
     }
     setSelectedTier(tierKey);
     setPaytrModalOpen(true);
+  };
+
+  const handleCancel = async () => {
+    setCancelBusy(true);
+    try {
+      await api.cancelSubscription(user);
+      await refreshPlan();
+      setConfirmCancel(false);
+      showToast(
+        locale === "tr"
+          ? "Aboneliğiniz iptal edildi; dönem sonuna kadar erişiminiz sürer."
+          : "Subscription cancelled. You keep access until the period ends.",
+        "info",
+      );
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   return (
@@ -37,6 +64,44 @@ export function BillingPage() {
             "Ekibinizin veya işletmenizin ihtiyaçlarına uygun plana geçerek link ve trafik kotalarınızı artırın."}
         </p>
       </div>
+
+      {subscription && currentTier !== "free" && (
+        <div className="billing-status" role="status">
+          <strong>{TIERS[currentTier]?.name}</strong>{" "}
+          {subscription.cancelAtPeriodEnd
+            ? locale === "tr"
+              ? `· İptal edildi, erişim ${renewalDate || "dönem sonuna"} kadar sürer.`
+              : `· Cancelled, access continues until ${renewalDate || "the period ends"}.`
+            : renewalDate
+              ? locale === "tr"
+                ? `· Sonraki yenileme: ${renewalDate}`
+                : `· Renews on ${renewalDate}`
+              : ""}
+          {subscription.status === "past_due" && (
+            <span className="billing-status-warn">
+              {locale === "tr" ? " Son ödeme alınamadı; kartınızı kontrol edin." : " Last payment failed; please check your card."}
+            </span>
+          )}
+        </div>
+      )}
+
+      {confirmCancel && (
+        <div className="billing-status billing-confirm" role="alertdialog" aria-label="Abonelik iptali">
+          <span>
+            {locale === "tr"
+              ? "Aboneliği iptal etmek istediğinizden emin misiniz? Ödediğiniz dönemin sonuna kadar paketiniz aktif kalır."
+              : "Cancel your subscription? Your plan stays active until the end of the paid period."}
+          </span>
+          <span className="billing-confirm-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setConfirmCancel(false)} disabled={cancelBusy}>
+              {locale === "tr" ? "Vazgeç" : "Keep plan"}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleCancel} disabled={cancelBusy}>
+              {cancelBusy ? <Loader2 size={14} className="spin" /> : locale === "tr" ? "Aboneliği iptal et" : "Cancel subscription"}
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Monthly / Annual switch */}
       <div className="billing-cycle-switch">
@@ -137,7 +202,7 @@ export function BillingPage() {
               <button
                 className={`btn ${isCurrent ? "btn-secondary" : isPro ? "btn-primary" : "btn-secondary"}`}
                 style={{ width: "100%", padding: "10px" }}
-                disabled={isCurrent}
+                disabled={isCurrent || (tierKey === "free" && (currentTier === "free" || subscription?.cancelAtPeriodEnd))}
                 onClick={() => handleSelectTier(tierKey)}
               >
                 {isCurrent

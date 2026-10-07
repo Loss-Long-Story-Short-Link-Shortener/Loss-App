@@ -10,6 +10,7 @@ import {
   Trash2,
   MoreHorizontal,
   Edit3,
+  BarChart3,
 } from "lucide-react";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { useAuth } from "../../context/AuthContext";
@@ -17,9 +18,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useClickOutside } from "../../hooks/useClickOutside";
 import { getShortUrl } from "../../constants/domains";
 
-export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
+export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest, onViewAnalytics }) {
   const { toggleLinkStatus, showToast } = useAuth();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -54,6 +55,7 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
             className="link-qr-icon-btn"
             onClick={() => onOpenQr(link)}
             title={lt.viewQr || "QR Kodu Görüntüle"}
+            aria-label={lt.viewQr || "QR Kodu Görüntüle"}
           >
             <QrCode size={16} />
           </button>
@@ -68,6 +70,7 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
                 className="copy-mini-btn"
                 onClick={handleCopy}
                 title={c.copy || "Panoya Kopyala"}
+                aria-label={c.copy || "Panoya Kopyala"}
               >
                 {copied ? (
                   <Check size={13} color="#10b981" />
@@ -92,7 +95,7 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
       <td>
         <span className={`status-pill ${isPaused ? "paused" : "active"}`}>
           <span className="status-pill-dot" />
-          {isPaused ? lt.filterPaused || "Duraklatıldı" : c.active || "Yayında"}
+          {isPaused ? c.paused || (locale === "tr" ? "Duraklatıldı" : "Paused") : c.active || (locale === "tr" ? "Yayında" : "Active")}
         </span>
       </td>
 
@@ -125,6 +128,9 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
           className="icon-btn"
           style={{ width: "30px", height: "30px" }}
           onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label={`${link.title || link.slug} — ${lt.colActions || "İşlemler"}`}
+          aria-haspopup="true"
+          aria-expanded={menuOpen}
         >
           <MoreHorizontal size={16} />
         </button>
@@ -132,6 +138,9 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
         {menuOpen && (
           <div
             ref={menuRef}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setMenuOpen(false);
+            }}
             style={{
               position: "absolute",
               right: 0,
@@ -169,6 +178,19 @@ export function LinkRow({ link, onOpenQr, onEditRequest, onDeleteRequest }) {
             >
               <Edit3 size={13} /> {lt.editDest || "Hedefi Düzenle"}
             </button>
+
+            {onViewAnalytics && !link.isDemo && (
+              <button
+                className="btn btn-subtle btn-sm"
+                style={{ justifyContent: "flex-start" }}
+                onClick={() => {
+                  onViewAnalytics(link);
+                  setMenuOpen(false);
+                }}
+              >
+                <BarChart3 size={13} /> {t.analytics?.viewDetails || "İstatistikleri Gör"}
+              </button>
+            )}
 
             <a
               href={shortUrl}

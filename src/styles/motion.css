@@ -1,0 +1,51 @@
+/* Motion layer. Curves and durations follow one scale; only transform, opacity (and clip-path for charts) animate.
+   Frequent actions (keyboard shortcuts, palette) stay instant; the delight budget is spent on first view of the landing page. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+html { overflow-x: clip; }
+
+/* ── Overlays: modal, drawer, menu ───────────────────────────────────── */
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+@keyframes slide { from { transform: translateX(100%); } }
+@keyframes slide-left { from { transform: translateX(-100%); } }
+@keyframes sheet { from { transform: translateY(100%); } }
+.overlay { animation: fade .18s var(--ease-out); backdrop-filter: blur(3px); }
+.modal { animation: pop .24s var(--ease-out); }
+.drawer { animation: slide .32s var(--ease-drawer); }
+.drawer.left { animation: slide-left .3s var(--ease-drawer); }
+.menu { transform-origin: top left; animation: pop .16s var(--ease-out); }
+.menu.right { transform-origin: top right; }
+@media (max-width: 640px) { .modal { animation: sheet .32s var(--ease-drawer); } }
+
+/* ── App: route entry, list rows, charts ─────────────────────────────── */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.page-in { animation: rise .26s var(--ease-out); }
+.link-table tbody tr { animation: rise .32s var(--ease-out) backwards; }
+.link-table tbody tr:nth-child(2) { animation-delay: 30ms; } .link-table tbody tr:nth-child(3) { animation-delay: 60ms; }
+.link-table tbody tr:nth-child(4) { animation-delay: 90ms; } .link-table tbody tr:nth-child(5) { animation-delay: 120ms; }
+.link-table tbody tr:nth-child(6) { animation-delay: 150ms; } .link-table tbody tr:nth-child(7) { animation-delay: 180ms; }
+.link-table tbody tr:nth-child(n+8) { animation-delay: 210ms; }
+.stat { transition: border-color .2s, box-shadow .2s, translate .2s var(--ease-out); }
+@keyframes draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes grow { from { transform: scaleX(0); } }
+.chart svg path { animation: draw 1s var(--ease-out); }
+.barlist-bar span { transform-origin: left; animation: grow .8s var(--ease-out) backwards; }
+.nav-item { transition: background-color .15s, color .15s, translate .2s var(--ease-out); }
+.btn { transition: background-color .15s, border-color .15s, color .15s, box-shadow .2s, transform .16s var(--ease-out); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.link-short, .icon-btn { transition: background-color .15s, color .15s, transform .16s var(--ease-out); }
+.icon-btn:active { transform: scale(0.92); }
+
+@media (hover: hover) and (pointer: fine) {
+  .stat:hover { border-color: var(--border-strong); translate: 0 -2px; box-shadow: var(--shadow-md); }
+  .nav-item:hover { translate: 2px 0; }
+  .mk-nav a { transition: color .15s, background-color .15s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .link-table tbody tr, .chart svg path, .barlist-bar span { animation: none; }
+}

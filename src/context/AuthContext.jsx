@@ -5,6 +5,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import {
   onAuthStateChanged,
@@ -39,11 +40,14 @@ export function AuthProvider({ children }) {
     }
     return saved;
   });
-  const [currentTier, setCurrentTierState] = useState(() => storage.getTier());
+  // Plan information is owned by the server (/api/me); the client only displays it.
+  const [plan, setPlan] = useState({ tier: "free", subscription: null });
+  const currentTier = plan.tier;
   const [billingPeriod, setBillingPeriod] = useState("monthly");
 
   const [links, setLinks] = useState([]);
   const [linksLoading, setLinksLoading] = useState(false);
+  const [linksError, setLinksError] = useState("");
   const [toasts, setToasts] = useState([]);
 
   // Toast dispatch
@@ -70,12 +74,6 @@ export function AuthProvider({ children }) {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // Tier change
-  const setCurrentTier = useCallback((tier) => {
-    setCurrentTierState(tier);
-    storage.setTier(tier);
-  }, []);
-
   // Auth gate helper: if not authenticated, prompts AuthModal
   const requireAuth = useCallback(
     (reason = "Bu özelliği kullanmak için giriş yapmalısınız.") => {
@@ -91,52 +89,95 @@ export function AuthProvider({ children }) {
 
   // Firebase auth listener
   useEffect(() => {
-    if (!firebaseConfigured || !auth) {
-      // Offline/local guest mode by default
-      const savedUser = storage.isDemoUser()
+    const restoreDemo = () =>
+      storage.isDemoUser()
         ? {
-            uid: "demo_user",
+            uid: "demo_admin_01",
             email: "demo@loss.tr",
-            displayName: "Demo Kullanıcı",
+            displayName: "Demo Yönetici",
+            isDemo: true,
           }
         : null;
-      setUser(savedUser);
+
+    if (!firebaseConfigured || !auth) {
+      // Local development without Firebase: demo workspace only.
+      setUser(restoreDemo());
       setAuthLoading(false);
       return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-      } else {
-        setUser(null);
-      }
+      setUser(firebaseUser || restoreDemo());
       setAuthLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Fetch links (user's real links or guest localStorage links)
+  // Fetch the user's links and plan. A request counter discards responses
+  // that arrive after the user changed (sign-out / account switch).
+  const requestRef = useRef(0);
   const refreshLinks = useCallback(async () => {
+    const requestId = ++requestRef.current;
+    if (!user) {
+      setLinks([]);
+      setLinksError("");
+      setPlan({ tier: "free", subscription: null });
+      return;
+    }
     setLinksLoading(true);
     try {
-      const fetched = await api.getLinks(user);
+      const [fetched, me] = await Promise.all([
+        api.getLinks(user),
+        user.isDemo ? null : api.getMe(user).catch(() => null),
+      ]);
+      if (requestId !== requestRef.current) return;
       setLinks(fetched);
+      setLinksError("");
+      if (me) setPlan({ tier: me.tier, subscription: me.subscription });
     } catch (err) {
+      if (requestId !== requestRef.current) return;
       console.error("Linkler yüklenemedi:", err);
+      setLinksError(err.message || "Bağlantılar yüklenemedi.");
     } finally {
-      setLinksLoading(false);
+      if (requestId === requestRef.current) setLinksLoading(false);
     }
+  }, [user]);
+
+  /** Re-read plan after a payment or cancellation. Returns the fresh plan. */
+  const refreshPlan = useCallback(async () => {
+    if (!user || user.isDemo) return null;
+    const me = await api.getMe(user);
+    setPlan({ tier: me.tier, subscription: me.subscription });
+    return me;
   }, [user]);
 
   useEffect(() => {
     refreshLinks();
-  }, [user, refreshLinks]);
+  }, [refreshLinks]);
 
   // Actions
   const addLink = useCallback(
     async (payload) => {
+      if (!user) {
+        // Guests cannot own links (a link that only exists in this browser
+        // would never resolve for anyone else). Remember the request and
+        // finish it automatically after sign-in.
+        try {
+          sessionStorage.setItem(
+            "loss_pending_link",
+            JSON.stringify({ url: payload.destination, slug: payload.slug }),
+          );
+        } catch {
+          /* storage unavailable */
+        }
+        setAuthModalReason("Kısa bağlantıyı oluşturmak için giriş yapın. Girdiğiniz adres sizin için saklandı.");
+        setAuthModalOpen(true);
+        const error = new Error("Bağlantıyı oluşturmak için giriş yapın veya ücretsiz hesap açın.");
+        error.code = "auth-required";
+        throw error;
+      }
+      // UX pre-check only; the server enforces the real limit.
       const tierMeta = TIERS[currentTier] || TIERS.free;
       if (links.length >= tierMeta.maxLinks) {
         throw new Error(
@@ -164,41 +205,39 @@ export function AuthProvider({ children }) {
           addLink({
             destination: pending.url,
             slug: pending.slug || undefined,
-            title: "Önizleme Bağlantısı",
-            tag: "Hero Claim",
           })
             .then(() => {
+              refreshLinks();
               showToast(
                 "✦ Harika! Önizlemedeki link hesabınıza aktarıldı.",
                 "success",
               );
             })
             .catch((err) => {
-              console.warn("Otomatik link sahiplenme hatası:", err.message);
+              showToast(err.message || "Bağlantı oluşturulamadı.", "error");
             });
         }
       }
     } catch (err) {
       console.warn("Pending claim check error:", err);
     }
-  }, [user, addLink, showToast]);
+  }, [user, addLink, showToast, refreshLinks]);
 
   const removeLink = useCallback(
-    async (linkId, linkObj) => {
-      const targetLink = linkObj || links.find((l) => l.id === linkId);
-      await api.deleteLink(user, linkId, targetLink);
+    async (linkId) => {
+      await api.deleteLink(user, linkId);
       setLinks((prev) => prev.filter((l) => l.id !== linkId));
       showToast("Bağlantı silindi", "info");
     },
-    [user, links, showToast],
+    [user, showToast],
   );
 
   const updateLink = useCallback(
     async (linkId, updates) => {
       try {
-        await api.updateLink(user, linkId, updates);
+        const saved = await api.updateLink(user, linkId, updates);
         setLinks((prev) =>
-          prev.map((l) => (l.id === linkId ? { ...l, ...updates } : l)),
+          prev.map((l) => (l.id === linkId ? { ...l, ...updates, ...saved } : l)),
         );
         showToast("Bağlantı başarıyla güncellendi ✦", "success");
         return true;
@@ -289,11 +328,13 @@ export function AuthProvider({ children }) {
     theme,
     setTheme,
     currentTier,
-    setCurrentTier,
+    plan,
+    refreshPlan,
     billingPeriod,
     setBillingPeriod,
     links,
     linksLoading,
+    linksError,
     totalClicks,
     refreshLinks,
     addLink,

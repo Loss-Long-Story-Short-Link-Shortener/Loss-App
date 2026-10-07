@@ -39,7 +39,7 @@ export const translations = {
     // ── Navigasyon ────────────────────────────────────────────────────────────
     nav: {
       features: "Özellikler",
-      performance: "Neden Hızlı?",
+      performance: "SSS",
       pricing: "Fiyatlar",
       dashboard: "Panel",
       myLinks: "Linklerim",
@@ -140,7 +140,7 @@ export const translations = {
       starterFeatures: [
         "500 Aktif Link",
         "Sınırsız Ziyaretçi Yönlendirmesi",
-        "1 Özel Markalı Domain (link.siteniz.com)",
+        "1 Özel Markalı Domain (link.siteniz.com) (Yakında)",
         "Canlı Hedef Değiştirme (QR Sabit Kalır)",
         "Baskıya Uygun Yüksek Kalite QR İndirme",
         "Instagram & Google Kampanya Etiketleri",
@@ -154,9 +154,9 @@ export const translations = {
       proFeatures: [
         "2.500 Aktif Link",
         "Sınırsız Ziyaretçi Yönlendirmesi",
-        "3 Özel Markalı Domain",
+        "3 Özel Markalı Domain (Yakında)",
         "Şifreli & Son Kullanma Tarihli Linkler",
-        "5 Kişilik Ekip Çalışma Alanı",
+        "5 Kişilik Ekip Çalışma Alanı (Yakında)",
         "300 DPI Matbaa Kalitesinde QR Kod",
         "Gelişmiş Ülke & Cihaz Dağılımı",
         "Öncelikli E-posta & Chat Desteği",
@@ -168,11 +168,11 @@ export const translations = {
       agencyAnnualPrice: "₺2.199",
       agencyFeatures: [
         "15.000 Aktif Link",
-        "15 Özel Markalı Domain",
-        "Sınırsız Ekip Üyesi & Yetkilendirme",
-        "Gelişmiş Webhook & REST API Erişimi",
-        "%99.9 Kesintisiz Çalışma Garantisi",
-        "Kurumsal Fatura ve Özel Müşteri Temsilcisi",
+        "15 Özel Markalı Domain (Yakında)",
+        "Sınırsız Ekip Üyesi & Yetkilendirme (Yakında)",
+        "Gelişmiş Webhook & REST API Erişimi (Yakında)",
+        "%99.9 Kesintisiz Çalışma Garantisi (Yakında)",
+        "Kurumsal Fatura ve Özel Müşteri Temsilcisi (Yakında)",
       ],
     },
 
@@ -190,7 +190,7 @@ export const translations = {
       a3: "Kesinlikle hayır. Ziyaretçilerinizi rahatsız eden çerezler kullanmıyoruz ve IP adreslerini kaydetmiyoruz. Sadece hangi ülkeden, hangi cihazdan ve hangi platformdan geldiklerini gösteren anonim istatistikler sunuyoruz.",
 
       q4: "Kendi web sitemin alan adını (domain) kullanabilir miyim?",
-      a4: "Evet. Starter, Pro ve Agency paketlerimizde kendi alan adınızı (örneğin: link.sirketiniz.com) kolayca bağlayabilir ve markanızın adıyla link paylaşabilirsiniz.",
+      a4: "Henüz değil. Özel alan adı desteği Starter ve üzeri paketler için geliştirme aşamasında; hazır olduğunda paketinizde otomatik olarak açılacak.",
 
       q5: "İstediğim zaman aboneliğimi iptal edebilir miyim?",
       a5: "Evet. Hiçbir taahhüt veya zorunluluk yoktur. Profilinizden dilediğiniz an tek tıkla iptal edebilirsiniz; mevcut dönem sonuna kadar özelliklerinizi kullanmaya devam edersiniz.",
@@ -292,7 +292,7 @@ export const translations = {
       subtitle: "Ekibinizin veya işletmenizin ihtiyaçlarına uygun plana geçerek link ve trafik kotalarınızı artırın.",
       monthly: "Aylık Fatura",
       annual: "Yıllık Fatura",
-      annualDiscount: "%20 İndirim",
+      annualDiscount: "2 Ay Ücretsiz",
       currentPlan: "Mevcut Paketiniz",
       switchTo: "Paketine Geç",
       popular: "Popüler Tercih",
@@ -351,7 +351,7 @@ export const translations = {
       feat3: "3 Özel Domain (link.sirketiniz.com)",
       feat4: "Canlı Hedef Değiştirme (QR Sabit Kalır)",
       feat5: "300 DPI Ultra HD Baskı QR Kodu",
-      feat6: "5 Kişilik Ekip Çalışma Alanı",
+      feat6: "5 Kişilik Ekip Çalışma Alanı (Yakında)",
       notice: "Tüm ödemeler PayTR güvencesiyle 256-bit SSL korumalı olarak tahsil edilir. İptal anında geçerlidir.",
     },
 
@@ -501,7 +501,7 @@ export const translations = {
     // ── Navigation ────────────────────────────────────────────────────────────
     nav: {
       features: "Features",
-      performance: "Why Fast?",
+      performance: "FAQ",
       pricing: "Pricing",
       dashboard: "Dashboard",
       myLinks: "My Links",
@@ -602,7 +602,7 @@ export const translations = {
       starterFeatures: [
         "500 Active Links",
         "Unlimited Redirect Traffic",
-        "1 Custom Branded Domain (link.yoursite.com)",
+        "1 Custom Branded Domain (link.yoursite.com) (Coming soon)",
         "Live Destination Editing (QR Never Changes)",
         "Print-Ready High-Res QR Downloads",
         "Instagram & Google Campaign Tags",
@@ -616,9 +616,9 @@ export const translations = {
       proFeatures: [
         "2,500 Active Links",
         "Unlimited Redirect Traffic",
-        "3 Custom Branded Domains",
+        "3 Custom Branded Domains (Coming soon)",
         "Password & Expiration Protection",
-        "5 Team Member Seats",
+        "5 Team Member Seats (Coming soon)",
         "300 DPI Ultra HD Print-Ready QR Codes",
         "Detailed Country & Device Breakdown",
         "Priority Support",
@@ -630,11 +630,11 @@ export const translations = {
       agencyAnnualPrice: "₺2,199",
       agencyFeatures: [
         "15,000 Active Links",
-        "15 Custom Branded Domains",
-        "Unlimited Team Members & Roles",
-        "Full Webhooks & REST API Access",
-        "99.9% Uptime SLA Guarantee",
-        "Dedicated Account Representative",
+        "15 Custom Branded Domains (Coming soon)",
+        "Unlimited Team Members & Roles (Coming soon)",
+        "Full Webhooks & REST API Access (Coming soon)",
+        "99.9% Uptime SLA Guarantee (Coming soon)",
+        "Dedicated Account Representative (Coming soon)",
       ],
     },
 
@@ -652,7 +652,7 @@ export const translations = {
       a3: "Never. We don't use annoying cookies or store raw IP addresses. You get clean, aggregated statistics on countries, devices, and referral sources with total respect for privacy.",
 
       q4: "Can I use my own company domain name?",
-      a4: "Yes. On Starter, Pro, and Agency plans, you can connect custom domains like link.yourbrand.com and share links under your own name.",
+      a4: "Not yet. Custom domain support is in development for Starter and above; it will be enabled on your plan automatically once it ships.",
 
       q5: "Can I cancel my subscription anytime?",
       a5: "Yes. There are no contracts or commitments. You can cancel with one click from your profile anytime; you'll keep access until the end of your billing cycle.",
@@ -754,7 +754,7 @@ export const translations = {
       subtitle: "Choose the plan that fits your growth. Remove link limits and connect your custom domains.",
       monthly: "Monthly Billing",
       annual: "Annual Billing",
-      annualDiscount: "20% Off",
+      annualDiscount: "2 Months Free",
       currentPlan: "Current Plan",
       switchTo: "Select Plan",
       popular: "Most Popular",

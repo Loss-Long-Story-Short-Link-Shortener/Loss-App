@@ -104,7 +104,7 @@ export function RedirectPage({ slug, onGoHome }) {
     const localLinks = storage.getDemoLinks() || [];
     const match = localLinks.find((l) => l.slug?.toLowerCase() === String(slug).toLowerCase());
     if (match && match.destination) {
-      if (!match.password || match.password === passwordInput || passwordInput === "demo" || passwordInput === "123456") {
+      if (!match.password || match.demoPassword === passwordInput) {
         setDestination(match.destination);
         setStatus("redirecting");
         storage.incrementDemoClick(slug);

@@ -64,7 +64,7 @@ export function LossNavbar({
           tabIndex={0}
         >
           <div className="loss-brand-logo-glow">
-            <img src="/loss.png" alt="loss.tr" className="loss-brand-img" />
+            <img src="/loss-96.png" alt="loss.tr" className="loss-brand-img" />
           </div>
           <div className="loss-brand-text">
             <span className="loss-brand-name">loss.tr</span>
@@ -84,7 +84,7 @@ export function LossNavbar({
 
               <button
                 className="loss-nav-item"
-                onClick={() => handleNav("Overview", "hiz-ve-altyapi")}
+                onClick={() => handleNav("Overview", "sss")}
               >
                 {t.nav.performance}
               </button>
@@ -255,6 +255,7 @@ export function LossNavbar({
           {activePage === "Overview" ? (
             <button
               className="loss-cta-pill-button"
+              aria-label={t.common.shortenBtn}
               onClick={() => handleNav("Shortener")}
             >
               <div className="shine-pulse-layer" />
@@ -266,6 +267,7 @@ export function LossNavbar({
           ) : activePage === "Shortener" ? null : (
             <button
               className="loss-cta-pill-button"
+              aria-label={t.common.newLinkBtn}
               onClick={onOpenCreateModal}
             >
               <div className="shine-pulse-layer" />
@@ -281,6 +283,7 @@ export function LossNavbar({
             className="loss-mobile-hamburger"
             onClick={() => setMobileMenuOpen((v) => !v)}
             aria-label="Menü"
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

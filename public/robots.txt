@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /$
+Allow: /features
+Allow: /pricing
+Allow: /developers
+Allow: /privacy
+Allow: /terms
+Allow: /abuse
+Disallow: /api/
+Disallow: /app
+Disallow: /login
+Disallow: /register
+Disallow: /invite/
+Disallow: /payment-result.html
+
+Sitemap: https://loss.tr/sitemap.xml

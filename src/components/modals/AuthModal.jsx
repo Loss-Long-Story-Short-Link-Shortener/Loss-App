@@ -1,3 +1,4 @@
+import { authErrorMessage } from "../../utils/authErrors";
 import { useState } from "react";
 import { Link2, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import {
@@ -43,10 +44,7 @@ export function AuthModal({ isOpen, onClose, reason }) {
       }
       onClose();
     } catch (err) {
-      setError(
-        err.code?.replace("auth/", "").replaceAll("-", " ") ||
-          (locale === "tr" ? "İşlem başarısız oldu" : "Operation failed")
-      );
+      setError(authErrorMessage(err.code, locale));
     } finally {
       setBusy(false);
     }
@@ -72,10 +70,7 @@ export function AuthModal({ isOpen, onClose, reason }) {
       );
       onClose();
     } catch (err) {
-      setError(
-        err.code?.replace("auth/", "").replaceAll("-", " ") ||
-          (locale === "tr" ? "Google girişi iptal edildi" : "Google sign-in cancelled")
-      );
+      setError(authErrorMessage(err.code, locale));
     } finally {
       setBusy(false);
     }
@@ -130,8 +125,10 @@ export function AuthModal({ isOpen, onClose, reason }) {
 
         <form onSubmit={handleEmailAuth}>
           <div className="form-group">
-            <label className="form-label">{a.emailLabel}</label>
+            <label className="form-label" htmlFor="auth-email">{a.emailLabel}</label>
             <input
+              id="auth-email"
+              autoComplete="email"
               type="email"
               required
               className="input-text"
@@ -142,8 +139,10 @@ export function AuthModal({ isOpen, onClose, reason }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">{a.passwordLabel}</label>
+            <label className="form-label" htmlFor="auth-password">{a.passwordLabel}</label>
             <input
+              id="auth-password"
+              autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               type="password"
               required
               minLength={6}
@@ -156,6 +155,7 @@ export function AuthModal({ isOpen, onClose, reason }) {
 
           {error && (
             <div
+              role="alert"
               style={{
                 color: "var(--danger)",
                 fontSize: "12px",

@@ -1,0 +1,45 @@
+/* Mobile refinements for the app shell and link table. */
+
+@media (max-width: 720px) {
+  /* Keep the nav capsule inside the viewport: primary action becomes icon-only. */
+  .loss-cta-pill-button { padding-left: 12px; padding-right: 12px; }
+  .loss-cta-pill-button .cta-text > span { display: none; }
+
+  /* Link table: keep link, clicks, status and actions; tags/date live in the detail menu. */
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4),
+  .data-table th:nth-child(5),
+  .data-table td:nth-child(5) { display: none; }
+
+  .table-container { overflow-x: hidden; }
+  .data-table { table-layout: fixed; }
+  .data-table th,
+  .data-table td { padding-left: 12px; padding-right: 12px; }
+  .data-table th { white-space: normal; letter-spacing: 0.04em; }
+  .link-qr-icon-btn { display: none; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 52px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 92px; }
+  .data-table .status-pill { padding-left: 8px; padding-right: 8px; font-size: 11px; }
+  .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 48px; padding-left: 4px; padding-right: 8px; }
+  .link-cell { min-width: 0; }
+  .link-text-content { min-width: 0; max-width: 100%; }
+  .link-text-content strong,
+  .link-short-url-row a,
+  .link-destination-preview { overflow-wrap: anywhere; word-break: break-word; }
+  .link-destination-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar > div[style] { margin-left: 0 !important; width: 100%; }
+  .filter-bar .select-box { flex: 1; min-width: 0 !important; }
+
+  .insights-controls { width: 100%; }
+  .insights-controls .select-box { flex: 1; min-width: 0; }
+  .insights-totals { gap: 20px; }
+}
+
+@media (max-width: 520px) {
+  /* Hero shortener: input above button so the placeholder is readable. */
+  .loss-hero-input-row { flex-direction: column; align-items: stretch; border-radius: var(--radius-lg); gap: 8px; padding: 10px; }
+  .loss-hero-input-row .loss-hero-input-field { width: 100%; min-height: 44px; }
+  .loss-hero-input-row button[type="submit"] { width: 100%; justify-content: center; min-height: 44px; }
+}

@@ -1,28 +1,94 @@
 <!doctype html>
-<html lang="tr" data-theme="dark">
+<html lang="tr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#fbfbfa" />
+    <meta name="color-scheme" content="light dark" />
+
+    <title>Loss - Link Kısaltma ve Dinamik QR Kod Yönetimi | loss.tr</title>
     <meta
       name="description"
-      content="Loss — Hızlı link kısaltma ve dinamik QR kod yönetim platformu. Basılı QR kodlarınızın hedefini dilediğiniz an değiştirin, çerezsiz istatistiklerle ziyaretçilerinizi izleyin."
+      content="loss.tr ile uzun bağlantıları kısaltın, basılı QR kodlarınızın hedefini istediğiniz an değiştirin ve çerezsiz, gizlilik dostu istatistiklerle tıklamaları izleyin."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
+    <link rel="canonical" href="https://loss.tr/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Loss" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:url" content="https://loss.tr/" />
+    <meta property="og:title" content="Loss - Link Kısaltma ve Dinamik QR Kod Yönetimi" />
+    <meta
+      property="og:description"
+      content="Uzun bağlantıları kısaltın, QR kodlarınızı istediğiniz an tek tıkla güncelleyin, gizlilik dostu analizlerle izleyin."
     />
-    <link rel="icon" type="image/png" href="/loss.png" />
-    <link rel="apple-touch-icon" href="/loss.png" />
-    <meta property="og:title" content="Loss • Hızlı Link & Dinamik QR Yönetimi" />
-    <meta property="og:description" content="loss.tr ile uzun bağlantıları kısaltın, basılı QR kodlarınızı istediğiniz an tek tıkla güncelleyin." />
-    <meta property="og:image" content="/loss.png" />
-    <title>Loss • Hızlı Link & Akıllı QR Yönetimi (loss.tr)</title>
-  </head>
+    <meta property="og:image" content="https://loss.tr/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="loss.tr - hızlı link kısaltma ve dinamik QR kod yönetimi" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Loss - Link Kısaltma ve Dinamik QR Kod Yönetimi" />
+    <meta
+      name="twitter:description"
+      content="Uzun bağlantıları kısaltın, QR kodlarınızı istediğiniz an güncelleyin, gizlilik dostu analizlerle izleyin."
+    />
+    <meta name="twitter:image" content="https://loss.tr/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://loss.tr/#org",
+            "name": "Loss",
+            "url": "https://loss.tr/",
+            "logo": "https://loss.tr/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://loss.tr/#website",
+            "url": "https://loss.tr/",
+            "name": "Loss",
+            "inLanguage": "tr",
+            "publisher": { "@id": "https://loss.tr/#org" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Loss",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "url": "https://loss.tr/",
+            "description": "Link kısaltma, dinamik QR kod ve gizlilik dostu tıklama analizi platformu.",
+            "offers": {
+              "@type": "AggregateOffer",
+              "priceCurrency": "TRY",
+              "lowPrice": "0",
+              "highPrice": "2499",
+              "offerCount": "4"
+            }
+          }
+        ]
+      }
+    </script>
+</head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Crawler / no-JS fallback; replaced as soon as the app mounts. -->
+      <main style="max-width:640px;margin:15vh auto;padding:0 16px;font-family:system-ui,sans-serif;background:#fbfbfa;color:#111">
+        <h1>Loss - hızlı link kısaltma ve dinamik QR kod yönetimi</h1>
+        <p>
+          loss.tr ile uzun bağlantıları kısaltın, basılı QR kodlarınızın hedefini istediğiniz an değiştirin ve çerezsiz,
+          gizlilik dostu istatistiklerle tıklamaları izleyin.
+        </p>
+        <noscript><p>Loss uygulamasını kullanmak için lütfen JavaScript'i etkinleştirin.</p></noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

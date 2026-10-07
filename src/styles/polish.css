@@ -1,0 +1,19 @@
+/* App polish: accent is ultramarine, active states are quiet tints */
+.logo-text { font-weight: 700; letter-spacing: -0.04em; font-size: 19px; }
+.nav-item[aria-current="page"] { background: var(--accent-soft); color: var(--accent-text); }
+.table th { background: transparent; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; color: var(--text-3); }
+.tag { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); }
+.link-short { color: var(--text); font-weight: 500; }
+.link-short a:hover { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.badge.accent, .alert.info { background: var(--accent-soft); color: var(--accent-text); }
+.ws-avatar { background: var(--accent-soft); color: var(--accent-text); }
+.stat .stat-value { font-weight: 650; font-size: 28px; letter-spacing: -0.035em; }
+.progress > span { background: var(--accent); }
+.palette-list li.active, .bulkbar { background: var(--accent-soft); color: var(--accent-text); }
+.input:focus-visible, .select:focus-visible, .textarea:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.table tr.selected { background: var(--accent-soft); }
+.demo-banner { background: var(--accent-soft); color: var(--accent-text); border-bottom: 1px solid var(--border); font-weight: 500; }
+.demo-banner a, .demo-banner button { color: var(--accent-text); }
+.btn.copied { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); }
+.copy-field { border: 1px solid var(--border-strong); }
+.copy-field code { font-weight: 500; }

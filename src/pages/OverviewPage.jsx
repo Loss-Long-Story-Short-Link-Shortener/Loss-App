@@ -171,7 +171,6 @@ export function OverviewPage({
     setBusy(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 350));
       const destination = normalizeUrl(raw);
       const payload = {
         destination,
@@ -291,8 +290,8 @@ export function OverviewPage({
             <span className="loss-v2-badge-dot" />
             <span>
               {locale === "tr"
-                ? "YENİ: LOSS 2.0 ÇIKTI! • IŞIK HIZINDA EDGE YÖNLENDİRME"
-                : "NEW: LOSS 2.0 IS OUT! • SUB-15MS EDGE REDIRECTS"}
+                ? "HIZLI YÖNLENDİRME • DİNAMİK QR • ÇEREZSİZ ANALİZ"
+                : "FAST REDIRECTS • DYNAMIC QR • COOKIELESS ANALYTICS"}
             </span>
           </div>
 
@@ -316,8 +315,8 @@ export function OverviewPage({
           {/* Clean Subheading without broken tags */}
           <p className="loss-v2-hero-subtext">
             {locale === "tr"
-              ? "Karmaşık URL ve basılı QR kodlarınızı ışık hızında dönüştürün. Hedefinizi baskıdan sonra bile dilediğiniz an tek tıkla güncelleyin."
-              : "Supercharge your long URLs and dynamic QR codes with sub-15ms edge speed. Update destinations anytime, anywhere."}
+              ? "Uzun URL'lerinizi kısaltın, dinamik QR kodlar üretin. Hedefinizi baskıdan sonra bile dilediğiniz an tek tıkla güncelleyin."
+              : "Shorten long URLs and create dynamic QR codes. Update the destination any time, even after printing."}
           </p>
 
           {/* Upscayl CTA Capsule with Dual Gradient Wings */}
@@ -617,7 +616,7 @@ export function OverviewPage({
                     }}
                   >
                     <Activity size={12} />
-                    <span>11ms TTL</span>
+                    <span>{locale === "tr" ? "Anında yönlendirme" : "Instant redirect"}</span>
                   </span>
                 </div>
 
@@ -705,7 +704,7 @@ export function OverviewPage({
           <div className="loss-capabilities-strip">
             <span className="loss-capability-chip">
               <Zap size={13} color="#38bdf8" />
-              <span>Sub-15ms Global Edge</span>
+              <span>{locale === "tr" ? "Hızlı Yönlendirme" : "Fast Redirects"}</span>
             </span>
             <span className="loss-capability-chip">
               <QrCode size={13} color="#c084fc" />
@@ -844,38 +843,6 @@ export function OverviewPage({
               </div>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------
-          "AS SEEN ON" MARQUEE (Upscayl Monochrome Style)
-          ---------------------------------------------------------- */}
-      <section className="loss-seen-on-section">
-        <div className="loss-v2-container">
-          <p className="loss-seen-on-title">
-            {locale === "tr"
-              ? "AS SEEN ON & TRUSTED BY MODERN TEAMS"
-              : "AS SEEN ON & TRUSTED BY 25,000+ CREATORS"}
-          </p>
-
-          <div className="loss-marquee-wrapper">
-            <div className="loss-marquee-track">
-              {[...Array(2)].map((_, loopIdx) => (
-                <div
-                  key={loopIdx}
-                  style={{ display: "flex", gap: "54px", alignItems: "center" }}
-                >
-                  <span className="loss-marquee-item">PRODUCT HUNT</span>
-                  <span className="loss-marquee-item">TECHCRUNCH</span>
-                  <span className="loss-marquee-item">HACKER NEWS</span>
-                  <span className="loss-marquee-item">INDIE HACKERS</span>
-                  <span className="loss-marquee-item">GITHUB TRENDING</span>
-                  <span className="loss-marquee-item">DEV.TO</span>
-                  <span className="loss-marquee-item">PRODUCTLED</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1099,13 +1066,13 @@ export function OverviewPage({
                 </span>
                 <h3 className="loss-editorial-title">
                   {locale === "tr"
-                    ? "loss.tr ile Kontrol Sizde: Işık Hızında, Dinamik ve Özgür"
-                    : "Complete Control with loss.tr: Sub-15ms, Dynamic, Cookieless"}
+                    ? "loss.tr ile Kontrol Sizde: Hızlı, Dinamik ve Çerezsiz"
+                    : "Complete Control with loss.tr: Fast, Dynamic, Cookieless"}
                 </h3>
                 <p className="loss-editorial-text">
                   {locale === "tr"
-                    ? "Sub-15ms küresel edge yönlendirmeler, özel markalı alan adları, dinamik QR kodlar ve KVKK/GDPR uyumlu çerezsiz analitik. Linklerinizi ve basılı materyallerinizi akıllı bir büyüme motoruna dönüştürün."
-                    : "Sub-15ms edge routing across 300+ global edge locations, custom branded domains, dynamic QR codes, and zero-cookie GDPR compliant analytics."}
+                    ? "Doğrudan HTTP yönlendirme, dinamik QR kodlar ve çerez kullanmayan, gizlilik odaklı analitik. Linklerinizi ve basılı materyallerinizi tek yerden yönetin."
+                    : "Direct HTTP redirects, dynamic QR codes and cookieless, privacy-first analytics. Manage your links and printed material from one place."}
                 </p>
               </div>
 
@@ -1119,7 +1086,7 @@ export function OverviewPage({
                       marginBottom: "12px",
                     }}
                   >
-                    ⚡ Küresel Edge Yönlendirme Ağı
+                    🔒 {locale === "tr" ? "Gizlilik Odaklı Altyapı" : "Privacy-first infrastructure"}
                   </div>
 
                   <div
@@ -1131,42 +1098,9 @@ export function OverviewPage({
                       fontSize: "12px",
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        color: "rgba(255,255,255,0.7)",
-                      }}
-                    >
-                      <span>📍 İstanbul Edge (IST)</span>
-                      <span style={{ color: "#34d399", fontWeight: 700 }}>
-                        9ms TTL
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        color: "rgba(255,255,255,0.7)",
-                      }}
-                    >
-                      <span>📍 Frankfurt Edge (FRA)</span>
-                      <span style={{ color: "#34d399", fontWeight: 700 }}>
-                        14ms TTL
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        color: "rgba(255,255,255,0.7)",
-                      }}
-                    >
-                      <span>📍 Londra Edge (LHR)</span>
-                      <span style={{ color: "#34d399", fontWeight: 700 }}>
-                        12ms TTL
-                      </span>
-                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.75)" }}>✓ {locale === "tr" ? "Çerez kullanılmaz" : "No cookies"}</div>
+                    <div style={{ color: "rgba(255,255,255,0.75)" }}>✓ {locale === "tr" ? "IP adresi saklanmaz, günlük dönen özet kullanılır" : "No IP stored, daily-rotating hash only"}</div>
+                    <div style={{ color: "rgba(255,255,255,0.75)" }}>✓ {locale === "tr" ? "Hedef anında güncellenebilir" : "Destinations editable any time"}</div>
                   </div>
                 </div>
               </div>
@@ -1245,13 +1179,13 @@ export function OverviewPage({
                 </div>
                 <h3 className="loss-bento-title">
                   {locale === "tr"
-                    ? "Sub-15ms Küresel Edge Yönlendirmeleri"
-                    : "Sub-15ms Global Edge Redirects"}
+                    ? "Hızlı, Doğrudan Yönlendirme"
+                    : "Fast, Direct Redirects"}
                 </h3>
                 <p className="loss-bento-desc">
                   {locale === "tr"
-                    ? "Ziyaretçileriniz beyaz ekranda beklemez. 300'den fazla küresel CDN noktasıyla yönlendirme anında tamamlanır."
-                    : "Powered by a globally distributed edge mesh. Zero white-screen delay, ultra-low TTFB, maximum retention."}
+                    ? "Ziyaretçileriniz ara sayfada beklemez; doğrudan HTTP yönlendirmesi alır. Hedefi düzenlediğinizde değişiklik saniyeler içinde geçerli olur."
+                    : "Visitors get a direct HTTP redirect, not an interstitial page. Edit a destination and the change goes live within seconds."}
                 </p>
               </div>
               <div className="loss-bento-action">
@@ -1415,242 +1349,6 @@ export function OverviewPage({
                 <span>{locale === "tr" ? "Detayları İncele" : "Learn more"}</span>
                 <ArrowRight size={14} />
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------
-          SPEED & RELIABILITY COMPARISON MATRIX
-          ---------------------------------------------------------- */}
-      <section className="loss-v2-matrix-section" id="hiz-ve-altyapi">
-        <div className="loss-v2-container">
-          <div className="loss-v2-section-header">
-            <div className="loss-v2-section-tag">{t.speed.sectionTag}</div>
-            <h2 className="loss-v2-section-title">{t.speed.sectionTitle}</h2>
-            <p className="loss-v2-section-desc">{t.speed.sectionSubtitle}</p>
-          </div>
-
-          <div className="loss-v2-matrix-grid">
-            {/* Loss Matrix Card */}
-            <div className="loss-v2-matrix-card highlight">
-              <div className="loss-v2-matrix-card-header">
-                <span className="loss-v2-matrix-label">
-                  {t.speed.lossTitle}
-                </span>
-                <span className="loss-trans-savings">
-                  {locale === "tr" ? "Işık Hızında" : "Lightning Fast"}
-                </span>
-              </div>
-              <div className="loss-v2-matrix-number">{t.speed.lossLatency}</div>
-              <ul className="loss-v2-matrix-list">
-                <li className="loss-v2-matrix-item positive">
-                  <Check size={16} color="#34d399" />
-                  <span>{t.speed.lossPoint1}</span>
-                </li>
-                <li className="loss-v2-matrix-item positive">
-                  <Check size={16} color="#34d399" />
-                  <span>{t.speed.lossPoint2}</span>
-                </li>
-                <li className="loss-v2-matrix-item positive">
-                  <Check size={16} color="#34d399" />
-                  <span>{t.speed.lossPoint3}</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Legacy Competitor Matrix Card */}
-            <div className="loss-v2-matrix-card">
-              <div className="loss-v2-matrix-card-header">
-                <span className="loss-v2-matrix-label">
-                  {t.speed.legacyTitle}
-                </span>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "#f87171",
-                    fontWeight: 600,
-                  }}
-                >
-                  {locale === "tr" ? "Yavaş & Hantal" : "Slow & Outdated"}
-                </span>
-              </div>
-              <div className="loss-v2-matrix-number">
-                {t.speed.legacyLatency}
-              </div>
-              <ul className="loss-v2-matrix-list">
-                <li className="loss-v2-matrix-item">
-                  <span style={{ color: "#f87171", fontWeight: "bold" }}>
-                    ✕
-                  </span>
-                  <span>{t.speed.legacyPoint1}</span>
-                </li>
-                <li className="loss-v2-matrix-item">
-                  <span style={{ color: "#f87171", fontWeight: "bold" }}>
-                    ✕
-                  </span>
-                  <span>{t.speed.legacyPoint2}</span>
-                </li>
-                <li className="loss-v2-matrix-item">
-                  <span style={{ color: "#f87171", fontWeight: "bold" }}>
-                    ✕
-                  </span>
-                  <span>{t.speed.legacyPoint3}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------
-          UPSCAYL-STYLE DOUBLE-ROW TESTIMONIALS MARQUEE
-          ---------------------------------------------------------- */}
-      <section className="loss-testimonials-section">
-        <div className="loss-v2-container">
-          <div className="loss-v2-section-header">
-            <div className="loss-v2-section-tag">
-              {locale === "tr" ? "KULLANICI DENEYİMLERİ" : "SOCIAL PROOF"}
-            </div>
-            <h2 className="loss-v2-section-title">
-              {locale === "tr"
-                ? "İnsanlar Loss'u Neden Çok Seviyor?"
-                : "Loved by Founders, Marketers & Creators"}
-            </h2>
-          </div>
-
-          <div className="loss-testimonials-container">
-            {/* Row 1: Forward Direction */}
-            <div className="loss-test-track">
-              {[...Array(2)].map((_, loopIdx) => (
-                <div key={loopIdx} style={{ display: "flex", gap: "16px" }}>
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Basılı menülerimiz için Loss'un Dinamik QR özelliği
-                      hayatımızı kurtardı. Fiyat güncellemesi yaptığımızda baskı
-                      maliyetimiz sıfıra indi."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">EK</div>
-                      <div>
-                        <div className="loss-test-name">Emre Kaya</div>
-                        <div className="loss-test-role">Restoran İşletmecisi</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Yönlendirme hızı inanılmaz. Eski link servisinde
-                      ziyaretçilerimiz 1 saniyeden fazla bekliyordu, Loss ile 10
-                      milisaniyede hedefteler."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">SB</div>
-                      <div>
-                        <div className="loss-test-name">Selin Bilgin</div>
-                        <div className="loss-test-role">E-Ticaret Direktörü</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Çerezsiz takip özelliği sayesinde KVKK onay penceresi
-                      olmadan tam olarak hangi platformdan ne kadar tıklama
-                      aldığımızı görebiliyoruz."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">AY</div>
-                      <div>
-                        <div className="loss-test-name">Ali Yılmaz</div>
-                        <div className="loss-test-role">Dijital Pazarlama</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Kendi domainimizi bağlamak 2 dakika sürdü. Müşterilerimize
-                      artık kendi markamızın linkleriyle kampanya
-                      gönderebiliyoruz."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">MC</div>
-                      <div>
-                        <div className="loss-test-name">Murat Can</div>
-                        <div className="loss-test-role">Ajans Kurucusu</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Row 2: Reverse Direction */}
-            <div className="loss-test-track reverse">
-              {[...Array(2)].map((_, loopIdx) => (
-                <div key={loopIdx} style={{ display: "flex", gap: "16px" }}>
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "The TTFB speed on Cloudflare edge is unmatched. Our ads
-                      now see a measurable 18% lift in conversion because users
-                      never bounce."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">JD</div>
-                      <div>
-                        <div className="loss-test-name">Jack Davis</div>
-                        <div className="loss-test-role">Growth Lead</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Finally a shortener with state-of-the-art UI and zero
-                      bloat. The vector SVG exports for our billboard campaign
-                      were crystal sharp."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">ET</div>
-                      <div>
-                        <div className="loss-test-name">Elena Taylor</div>
-                        <div className="loss-test-role">Creative Producer</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "REST API entegrasyonuyla her gün binlerce dinamik
-                      bağlantıyı otomatik üretiyoruz. Kesintisiz altyapı için tek
-                      tercihimiz."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">KD</div>
-                      <div>
-                        <div className="loss-test-name">Kaan Demir</div>
-                        <div className="loss-test-role">CTO, SaaS Startup</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="loss-test-card">
-                    <p className="loss-test-quote">
-                      "Clean design, zero cookies, instant updates. Easily the
-                      most premium link platform we have ever tested."
-                    </p>
-                    <div className="loss-test-author">
-                      <div className="loss-test-avatar">MZ</div>
-                      <div>
-                        <div className="loss-test-name">Max Zeller</div>
-                        <div className="loss-test-role">Tech Reviewer</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

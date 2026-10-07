@@ -216,7 +216,6 @@ export function ShortenerStudioPage({
     setBusy(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 200));
       const destination = normalizeUrl(raw);
       const payload = {
         destination,
@@ -440,8 +439,8 @@ export function ShortenerStudioPage({
 
           <div className="loss-dash-stat-pill blue">
             <Zap size={13} color="#38bdf8" />
-            <span>Global Edge:</span>
-            <strong>11ms</strong>
+            <span>Yönlendirme:</span>
+            <strong>Doğrudan</strong>
           </div>
         </div>
       </div>
@@ -707,7 +706,7 @@ export function ShortenerStudioPage({
                   <span>{createdLink ? "CANLI BAĞLANTI" : "CANLI ÖNİZLEME"}</span>
                 </span>
                 <span style={{ fontSize: "11px", color: "#34d399", fontWeight: 700 }}>
-                  ● 11ms Global Edge
+                  ● Canlı
                 </span>
               </div>
 

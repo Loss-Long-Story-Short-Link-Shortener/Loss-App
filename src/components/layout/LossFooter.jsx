@@ -15,7 +15,7 @@ export function LossFooter({ onSelectPage }) {
           {/* Brand Info */}
           <div className="footer-brand-col">
             <div className="footer-brand-row" onClick={scrollToTop} style={{ cursor: "pointer" }}>
-              <img src="/loss.png" alt="loss.tr" className="footer-logo-img" />
+              <img src="/loss-96.png" alt="loss.tr" className="footer-logo-img" />
               <span className="footer-brand-title">loss.tr</span>
             </div>
             <p className="footer-brand-tagline">

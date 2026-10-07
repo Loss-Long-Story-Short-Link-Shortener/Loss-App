@@ -62,57 +62,69 @@ export async function requireUser(request) {
     ? authorization.slice(7)
     : null;
 
-  if (!token) {
-    const error = new Error("Missing Firebase ID token");
-    error.statusCode = 401;
-    throw error;
-  }
+  if (!token) throw httpError(401, "Missing Firebase ID token");
 
+  const { auth } = await getFirebaseAdmin();
   try {
-    const { auth } = await getFirebaseAdmin();
     return await auth.verifyIdToken(token);
   } catch (error) {
-    error.statusCode =
-      error.code === "auth/id-token-expired" ||
-      error.code === "auth/invalid-id-token"
-        ? 401
-        : 500;
-    throw error;
+    // Any verification failure (expired, malformed, wrong project, revoked)
+    // means the caller is not authenticated.
+    console.warn("ID token rejected:", error.code || error.message);
+    throw httpError(401, "Invalid session");
   }
 }
 
 export function sendJson(response, statusCode, payload) {
+  response.setHeader("Cache-Control", "no-store");
   response
     .status(statusCode)
     .setHeader("Content-Type", "application/json")
     .json(payload);
 }
 
+/**
+ * Convert any thrown error to a safe JSON response. Errors that carry an
+ * explicit statusCode < 500 were raised on purpose and their message is safe
+ * to show; everything else is logged server-side and replaced with a generic
+ * message so configuration details never leak.
+ */
 export function handleApiError(response, error) {
   console.error("API error", error);
-  return sendJson(response, error.statusCode || 500, {
-    error:
-      error.statusCode === 401
-        ? "Your session is invalid or expired"
-        : error.message || "Server configuration error",
-  });
+  const status = error.statusCode || 500;
+  let message = "Sunucu hatası. Lütfen daha sonra tekrar deneyin.";
+  if (status === 401) message = "Oturumunuz geçersiz veya süresi dolmuş.";
+  else if (status < 500 && error.expose !== false) message = error.message;
+  return sendJson(response, status, { error: message });
 }
 
-export function allowCors(response) {
-  response.setHeader(
-    "Access-Control-Allow-Origin",
-    process.env.FRONTEND_ORIGIN || "*",
-  );
-  response.setHeader(
-    "Access-Control-Allow-Headers",
-    "Authorization, Content-Type",
-  );
-  response.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS",
-  );
+export function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
 
-  // Security headers
+function allowedOrigins() {
+  return (process.env.FRONTEND_ORIGIN || "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+/**
+ * Apply security headers and CORS. Same-origin requests need no CORS headers;
+ * cross-origin requests are only allowed from FRONTEND_ORIGIN (never "*").
+ */
+export function allowCors(response, request) {
+  const origin = request?.headers?.origin;
+  const allowed = allowedOrigins();
+  if (origin && allowed.includes(origin)) {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+    response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+    response.setHeader("Access-Control-Max-Age", "600");
+  }
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");

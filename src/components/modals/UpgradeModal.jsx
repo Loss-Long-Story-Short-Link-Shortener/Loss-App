@@ -146,7 +146,7 @@ export function UpgradeModal({ isOpen, onClose }) {
             marginTop: "4px",
           }}
         >
-          {u.notice || "Tüm ödemeler PayTR güvencesiyle 256-bit SSL korumalı olarak tahsil edilir. İptal anında geçerlidir."}
+          {u.notice || "Tüm ödemeler PayTR güvencesiyle 256-bit SSL korumalı olarak tahsil edilir. İstediğiniz zaman iptal edebilirsiniz; ödediğiniz dönemin sonuna kadar erişiminiz sürer."}
         </div>
       </div>
 

@@ -199,3 +199,33 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* ── Checkout ─────────────────────────────────────────────────────────── */
+.checkout-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 8px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.checkout-frame {
+  width: 100%;
+  height: 520px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 8px);
+  background: #fff;
+}
+.checkout-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.checkout-note svg { flex-shrink: 0; margin-top: 2px; color: var(--success, #10b981); }

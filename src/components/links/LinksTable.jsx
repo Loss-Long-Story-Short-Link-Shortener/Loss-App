@@ -9,6 +9,7 @@ export function LinksTable({
   onEditRequest,
   onDeleteRequest,
   onOpenCreateModal,
+  onViewAnalytics,
 }) {
   const { t } = useLanguage();
   const lt = t.linksTable || {};
@@ -35,7 +36,7 @@ export function LinksTable({
             <th>{lt.colStatus || "Durum"}</th>
             <th>{lt.colTags || "Korumalar & Etiketler"}</th>
             <th>{lt.colDate || "Tarih"}</th>
-            <th style={{ textAlign: "right" }}>{lt.colActions || "İşlemler"}</th>
+            <th style={{ textAlign: "right" }}><span className="sr-only">{lt.colActions || "İşlemler"}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -46,6 +47,7 @@ export function LinksTable({
               onOpenQr={onOpenQr}
               onEditRequest={onEditRequest}
               onDeleteRequest={onDeleteRequest}
+              onViewAnalytics={onViewAnalytics}
             />
           ))}
         </tbody>

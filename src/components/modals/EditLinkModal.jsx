@@ -56,8 +56,8 @@ export function EditLinkModal({ isOpen, onClose, link }) {
       const normalized = normalizeUrl(raw);
       const ok = await updateLink(link.id, {
         destination: normalized,
-        title: title.trim() || undefined,
-        tag: tag.trim() || undefined,
+        title: title.trim(),
+        tag: tag.trim(),
       });
 
       if (ok) {

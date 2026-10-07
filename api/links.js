@@ -1,124 +1,190 @@
-import { randomBytes, createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import {
   allowCors,
   getFirebaseAdmin,
   handleApiError,
+  httpError,
   requireUser,
   sendJson,
 } from "./_firebase.js";
-import { invalidateLinkCache } from "./redirect/[slug].js";
+import { invalidateLinkCache } from "./_lib/linkCache.js";
+import {
+  LINK_ID_PATTERN,
+  canonicalHost,
+  cleanText,
+  generateSlug,
+  linkDocId,
+  serializeLink,
+  validateExpiry,
+  validateSlug,
+} from "./_lib/links.js";
+import { hashPassword, validatePasswordInput } from "./_lib/password.js";
+import { getUserPlan } from "./_lib/plans.js";
+import { consume } from "./_lib/rateLimit.js";
+import { isReservedSlug } from "./_lib/reserved.js";
+import { validateDestination } from "./_lib/urlSafety.js";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+const PAGE_DEFAULT = 200;
+const PAGE_MAX = 500;
+const ALLOWED_STATUS = new Set(["active", "paused"]);
+const CREATE_PER_MINUTE = 30;
 
-const BASE62_CHARSET =
-  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-function createSlug(length = 7) {
-  const bytes = randomBytes(length);
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += BASE62_CHARSET[bytes[i] % 62];
+function parseBody(request) {
+  const body = request.body;
+  if (body && typeof body === "object") return body;
+  if (typeof body === "string" && body) {
+    try {
+      return JSON.parse(body);
+    } catch {
+      throw httpError(400, "İstek gövdesi geçerli JSON olmalıdır.");
+    }
   }
-  return result;
+  return {};
 }
 
-function normalizeSlug(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
+function resolveTargetId(input) {
+  const { id, slug } = input;
+  const target = id || (slug ? linkDocId(String(slug).toLowerCase()) : null);
+  if (!target || typeof target !== "string" || !LINK_ID_PATTERN.test(target)) {
+    throw httpError(400, "Geçerli bir bağlantı kimliği gerekli.");
+  }
+  return target;
 }
 
-/**
- * Hash a password with SHA-256 + random salt.
- * Stored as "salt:hash" so we can verify later.
- */
-function hashPassword(plaintext) {
-  const salt = randomBytes(16).toString("hex");
-  const hash = createHash("sha256")
-    .update(salt + plaintext)
-    .digest("hex");
-  return `${salt}:${hash}`;
+/** Load a link and make sure the caller owns it. 404 for both missing and foreign links (no enumeration). */
+async function loadOwnedLink(db, id, uid) {
+  const ref = db.collection("links").doc(id);
+  const snap = await ref.get();
+  if (!snap.exists || snap.data().ownerId !== uid) throw httpError(404, "Bağlantı bulunamadı.");
+  return { ref, data: snap.data() };
 }
 
-/**
- * Verify a plaintext password against a "salt:hash" stored value.
- */
-export function verifyPassword(plaintext, stored) {
-  if (!stored || !stored.includes(":")) return false;
-  const [salt, expectedHash] = stored.split(":");
-  const hash = createHash("sha256")
-    .update(salt + plaintext)
-    .digest("hex");
-  return hash === expectedHash;
+async function listLinks(db, uid, query) {
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || PAGE_DEFAULT, 1), PAGE_MAX);
+  let q = db
+    .collection("links")
+    .where("ownerId", "==", uid)
+    .orderBy("createdAt", "desc")
+    .limit(limit + 1);
+
+  if (query.cursor) {
+    if (!LINK_ID_PATTERN.test(String(query.cursor))) throw httpError(400, "Geçersiz sayfa imleci.");
+    const cursorSnap = await db.collection("links").doc(String(query.cursor)).get();
+    if (cursorSnap.exists && cursorSnap.data().ownerId === uid) q = q.startAfter(cursorSnap);
+  }
+
+  const snapshot = await q.get();
+  const docs = snapshot.docs.slice(0, limit);
+  return {
+    links: docs.map((d) => serializeLink(d.id, d.data())),
+    nextCursor: snapshot.docs.length > limit ? docs[docs.length - 1].id : null,
+  };
 }
 
-// Domains that should never be used as redirect destinations
-const BLOCKED_DESTINATION_HOSTS = new Set([
-  "loss.tr",
-  "go.loss.tr",
-  "loss.consolaktif.com.tr",
-  "go.consolaktif.com.tr",
-]);
+async function createLink(db, user, body) {
+  const destination = validateDestination(body.destination);
+  if (!destination.ok) throw httpError(400, destination.error);
 
-// Reserved slugs that cannot be claimed
-const RESERVED_SLUGS = new Set([
-  "api",
-  "app",
-  "admin",
-  "login",
-  "register",
-  "dashboard",
-  "settings",
-  "billing",
-  "health",
-  "ping",
-  "_health",
-  "s",
-  "shortener",
-  "link-shortener",
-]);
+  const password = validatePasswordInput(body.password);
+  if (!password.ok) throw httpError(400, password.error);
+  const expiry = validateExpiry(body.expiresAt);
+  if (!expiry.ok) throw httpError(400, expiry.error);
 
-// Tier limits (Active Links Capacity mirrored from constants/tiers.js)
-const TIER_LIMITS = {
-  free: 25,
-  starter: 500,
-  pro: 2500,
-  agency: 15000,
-};
+  const requestedSlug = typeof body.slug === "string" ? body.slug.trim() : "";
+  let customSlug = null;
+  if (requestedSlug) {
+    const checked = validateSlug(requestedSlug);
+    if (!checked.ok) throw httpError(400, checked.error);
+    customSlug = checked.slug;
+  }
 
-function getCanonicalHost() {
-  return (process.env.SHORT_LINK_HOST || "loss.tr").trim().toLowerCase();
+  const limiter = await consume(db, "create", user.uid, CREATE_PER_MINUTE, 60);
+  if (!limiter.ok) {
+    throw Object.assign(httpError(429, "Çok hızlı link oluşturuyorsunuz. Lütfen biraz bekleyin."), {
+      retryAfter: limiter.retryAfter,
+    });
+  }
+
+  const { tier, plan } = await getUserPlan(db, user.uid);
+  const countSnap = await db.collection("links").where("ownerId", "==", user.uid).count().get();
+  if (countSnap.data().count >= plan.maxLinks) {
+    throw httpError(402, `Plan kotanıza (${plan.maxLinks} link) ulaştınız. Lütfen paketinizi yükseltin.`);
+  }
+
+  const host = canonicalHost();
+  const baseDoc = {
+    ownerId: user.uid,
+    domain: host,
+    title: cleanText(body.title, 120) || destination.hostname,
+    tag: cleanText(body.tag, 40),
+    password: password.value ? hashPassword(password.value) : "",
+    expiresAt: expiry.value,
+    destination: destination.url,
+    status: "active",
+    clickCount: 0,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  // create() fails atomically if the document exists, so concurrent requests
+  // for the same slug cannot both succeed.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const slug = customSlug || generateSlug(attempt < 5 ? 8 : 10);
+    if (!customSlug && isReservedSlug(slug)) continue;
+    const id = linkDocId(slug, host);
+    try {
+      await db.collection("links").doc(id).create({ ...baseDoc, slug });
+      const saved = await db.collection("links").doc(id).get();
+      return { link: serializeLink(id, saved.data()), tier };
+    } catch (error) {
+      if (error.code === 6 || /ALREADY_EXISTS/.test(String(error.message))) {
+        if (customSlug) throw httpError(409, `"${slug}" bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw httpError(503, "Benzersiz bir bağlantı adı üretilemedi. Lütfen tekrar deneyin.");
 }
 
-function getBaseUrl(requestHost) {
-  const host =
-    requestHost && !requestHost.includes("localhost")
-      ? requestHost
-      : getCanonicalHost();
-  const configuredBase = (
-    process.env.SHORT_LINK_BASE_URL || "https://loss.tr"
-  ).replace(/\/$/, "");
-  return requestHost && !requestHost.includes("localhost")
-    ? `https://${host}`
-    : configuredBase;
-}
+async function updateLink(db, user, body) {
+  const id = resolveTargetId(body);
+  const { ref } = await loadOwnedLink(db, id, user.uid);
+  const updates = { updatedAt: FieldValue.serverTimestamp() };
 
-function getRequestHost(request) {
-  return (request.headers["x-forwarded-host"] || request.headers.host || "")
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
-}
+  if (body.destination !== undefined) {
+    const destination = validateDestination(body.destination);
+    if (!destination.ok) throw httpError(400, destination.error);
+    updates.destination = destination.url;
+  }
+  if (body.status !== undefined) {
+    if (!ALLOWED_STATUS.has(body.status)) throw httpError(400, "Geçersiz bağlantı durumu.");
+    updates.status = body.status;
+  }
+  if (body.title !== undefined) updates.title = cleanText(body.title, 120);
+  if (body.tag !== undefined) updates.tag = cleanText(body.tag, 40);
+  if (body.password !== undefined) {
+    // "••••••" is the masked placeholder the client echoes back; treat it as "unchanged".
+    if (body.password !== "••••••") {
+      const password = validatePasswordInput(body.password);
+      if (!password.ok) throw httpError(400, password.error);
+      updates.password = password.value ? hashPassword(password.value) : "";
+    }
+  }
+  if (body.expiresAt !== undefined) {
+    const expiry = validateExpiry(body.expiresAt);
+    if (!expiry.ok) throw httpError(400, expiry.error);
+    updates.expiresAt = expiry.value;
+  }
 
-// ─── Handler ────────────────────────────────────────────────────────────────
+  await ref.update(updates);
+  invalidateLinkCache(id);
+  const saved = await ref.get();
+  return { link: serializeLink(id, saved.data()) };
+}
 
 export default async function handler(request, response) {
-  allowCors(response);
+  allowCors(response, request);
   if (request.method === "OPTIONS") return response.status(204).end();
   if (!["GET", "POST", "PATCH", "DELETE"].includes(request.method)) {
     return sendJson(response, 405, { error: "Method not allowed" });
@@ -127,255 +193,26 @@ export default async function handler(request, response) {
   try {
     const user = await requireUser(request);
     const { db } = await getFirebaseAdmin();
-    const host = getCanonicalHost();
-    const requestHost = getRequestHost(request);
-    const baseUrl = getBaseUrl(requestHost);
 
-    // ── GET: List user's links ─────────────────────────────────────────
     if (request.method === "GET") {
-      const snapshot = await db
-        .collection("links")
-        .where("ownerId", "==", user.uid)
-        .orderBy("createdAt", "desc")
-        .limit(200)
-        .get();
-
-      const userLinks = snapshot.docs.map((item) => {
-        const data = item.data();
-        return {
-          id: item.id,
-          ...data,
-          // Never expose the raw password hash to the client
-          password: data.password ? "••••••" : "",
-          shortUrl: `${baseUrl}/${data.slug}`,
-        };
-      });
-
-      return sendJson(response, 200, { links: userLinks });
+      return sendJson(response, 200, await listLinks(db, user.uid, request.query || {}));
     }
 
-    // ── DELETE: Delete a link ──────────────────────────────────────────
     if (request.method === "DELETE") {
-      const { id, slug } = request.body || request.query || {};
-      const targetId = id || (slug ? `${host}__${slug}` : null);
-      if (!targetId) {
-        return sendJson(response, 400, {
-          error: "Link ID or slug is required",
-        });
-      }
-
-      const linkRef = db.collection("links").doc(targetId);
-      const existing = await linkRef.get();
-      if (!existing.exists) {
-        return sendJson(response, 404, { error: "Link not found" });
-      }
-
-      if (existing.data().ownerId !== user.uid) {
-        return sendJson(response, 403, { error: "Permission denied" });
-      }
-
-      await linkRef.delete();
-      invalidateLinkCache(targetId);
-      return sendJson(response, 200, { success: true, id: targetId });
+      const id = resolveTargetId({ ...(request.query || {}), ...parseBody(request) });
+      const { ref } = await loadOwnedLink(db, id, user.uid);
+      await ref.delete();
+      invalidateLinkCache(id);
+      return sendJson(response, 200, { success: true, id });
     }
 
-    // ── PATCH: Update status, destination, title, tag, password, expiresAt ───
-    if (request.method === "PATCH") {
-      const { id, slug, destination, status, title, tag, password, expiresAt } =
-        request.body || {};
-      const targetId = id || (slug ? `${host}__${slug}` : null);
-      if (!targetId) {
-        return sendJson(response, 400, {
-          error: "Link ID or slug is required",
-        });
-      }
+    const body = parseBody(request);
+    if (request.method === "PATCH") return sendJson(response, 200, await updateLink(db, user, body));
 
-      const linkRef = db.collection("links").doc(targetId);
-      const existing = await linkRef.get();
-      if (!existing.exists) {
-        return sendJson(response, 404, { error: "Link not found" });
-      }
-
-      if (existing.data().ownerId !== user.uid) {
-        return sendJson(response, 403, { error: "Permission denied" });
-      }
-
-      const updates = { updatedAt: FieldValue.serverTimestamp() };
-
-      if (destination !== undefined) {
-        let destinationUrl;
-        try {
-          destinationUrl = new URL(destination.trim());
-          if (!["http:", "https:"].includes(destinationUrl.protocol)) {
-            throw new Error("Invalid protocol");
-          }
-        } catch {
-          return sendJson(response, 400, {
-            error:
-              "Geçersiz hedef URL. Lütfen geçerli bir http veya https adresi girin.",
-          });
-        }
-
-        if (
-          BLOCKED_DESTINATION_HOSTS.has(destinationUrl.hostname.toLowerCase())
-        ) {
-          return sendJson(response, 400, {
-            error:
-              "Bu hedef adresi güvenlik politikaları nedeniyle kullanılamaz.",
-          });
-        }
-        updates.destination = destinationUrl.toString();
-      }
-
-      if (status !== undefined) updates.status = status;
-      if (title !== undefined) updates.title = title;
-      if (tag !== undefined) updates.tag = tag;
-      // Hash new password; empty string removes protection
-      if (password !== undefined) {
-        updates.password = password ? hashPassword(password) : "";
-      }
-      if (expiresAt !== undefined) updates.expiresAt = expiresAt;
-
-      await linkRef.update(updates);
-      invalidateLinkCache(targetId);
-      const updatedSnapshot = await linkRef.get();
-      const updatedData = updatedSnapshot.data();
-
-      return sendJson(response, 200, {
-        link: {
-          id: targetId,
-          ...updatedData,
-          password: updatedData.password ? "••••••" : "",
-          shortUrl: `${baseUrl}/${updatedData.slug}`,
-        },
-      });
-    }
-
-    // ── POST: Create a new link ────────────────────────────────────────
-    const {
-      destination,
-      slug: requestedSlug,
-      title,
-      tag,
-      password,
-      expiresAt,
-    } = request.body || {};
-
-    // Validate destination URL
-    let destinationUrl;
-    try {
-      destinationUrl = new URL(destination);
-    } catch {
-      return sendJson(response, 400, {
-        error: "Destination must be a valid URL",
-      });
-    }
-
-    if (!/^https?:$/.test(destinationUrl.protocol)) {
-      return sendJson(response, 400, {
-        error: "Only HTTP and HTTPS destinations are supported",
-      });
-    }
-
-    // Block self-referencing redirects (open redirect prevention)
-    if (BLOCKED_DESTINATION_HOSTS.has(destinationUrl.hostname.toLowerCase())) {
-      return sendJson(response, 400, {
-        error: "Cannot create a short link pointing to this domain",
-      });
-    }
-
-    // Validate and normalize slug or auto-generate unique slug
-    let slug = normalizeSlug(requestedSlug);
-    if (slug) {
-      if (slug.length < 3) {
-        return sendJson(response, 400, {
-          error: "Özel bağlantı adı en az 3 karakter olmalıdır.",
-        });
-      }
-
-      if (RESERVED_SLUGS.has(slug)) {
-        return sendJson(response, 400, {
-          error:
-            "Bu bağlantı adı sistem tarafından ayrılmıştır ve kullanılamaz.",
-        });
-      }
-
-      // Check slug uniqueness for requested custom slug
-      const id = `${host}__${slug}`;
-      const linkRef = db.collection("links").doc(id);
-      const existing = await linkRef.get();
-      if (existing.exists) {
-        return sendJson(response, 409, {
-          error: `"${slug}" bağlantı adı zaten kullanımda. Lütfen farklı bir ad seçin.`,
-        });
-      }
-    } else {
-      // Auto-generate high-entropy Base62 slug with collision avoidance loop
-      let attempts = 0;
-      let uniqueFound = false;
-      while (!uniqueFound && attempts < 10) {
-        attempts++;
-        const candidate = createSlug(7);
-        if (RESERVED_SLUGS.has(candidate)) continue;
-        const candidateId = `${host}__${candidate}`;
-        const candidateDoc = await db
-          .collection("links")
-          .doc(candidateId)
-          .get();
-        if (!candidateDoc.exists) {
-          slug = candidate;
-          uniqueFound = true;
-        }
-      }
-      if (!slug) {
-        slug = createSlug(8);
-      }
-    }
-
-    // ── Server-side link limit check ───────────────────────────────────
-    // Count the user's existing links
-    const countSnapshot = await db
-      .collection("links")
-      .where("ownerId", "==", user.uid)
-      .count()
-      .get();
-    const currentCount = countSnapshot.data().count || 0;
-
-    // Default to free tier limit; a real billing system would look up the user's tier
-    const maxLinks = TIER_LIMITS.free;
-    if (currentCount >= maxLinks) {
-      return sendJson(response, 429, {
-        error: `Plan kotanıza (${maxLinks} link) ulaştınız. Lütfen paketinizi yükseltin.`,
-      });
-    }
-
-    const id = `${host}__${slug}`;
-
-    const link = {
-      ownerId: user.uid,
-      domain: host,
-      slug,
-      title: title || destinationUrl.hostname,
-      tag: tag || "",
-      password: password ? hashPassword(password) : "",
-      expiresAt: expiresAt || "",
-      destination: destinationUrl.toString(),
-      status: "active",
-      clickCount: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-    await linkRef.set(link);
-
-    return sendJson(response, 201, {
-      link: {
-        id,
-        ...link,
-        password: link.password ? "••••••" : "",
-        shortUrl: `${baseUrl}/${slug}`,
-      },
-    });
+    const result = await createLink(db, user, body);
+    return sendJson(response, 201, result);
   } catch (error) {
+    if (error.retryAfter) response.setHeader("Retry-After", String(error.retryAfter));
     return handleApiError(response, error);
   }
 }

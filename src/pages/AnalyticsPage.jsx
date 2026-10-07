@@ -13,8 +13,9 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { formatNumber, formatTimeAgo } from "../utils/formatters";
 import { getShortUrl } from "../constants/domains";
+import { LinkInsights } from "../components/analytics/LinkInsights";
 
-export function AnalyticsPage() {
+export function AnalyticsPage({ initialLinkId }) {
   const { links } = useAuth();
   const { t } = useLanguage();
 
@@ -177,6 +178,8 @@ export function AnalyticsPage() {
           </div>
         </div>
       )}
+
+      <LinkInsights initialLinkId={initialLinkId} />
 
       {/* Link Breakdown Table */}
       <div className="analytics-panel-card" style={{ marginTop: "20px" }}>

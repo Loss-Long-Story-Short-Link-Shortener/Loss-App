@@ -1,20 +1,20 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { AuthProvider } from "./context/AuthContext";
-import { LanguageProvider } from "./context/LanguageContext";
-import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import "@fontsource-variable/geist/wght.css";
+import "@fontsource-variable/geist-mono/wght.css";
 import App from "./App";
-import "./styles.css";
+import "./styles/tokens.css";
+import "./styles/base.css";
+import "./styles/ui.css";
+import "./styles/app.css";
+import "./styles/auth.css";
+import "./styles/marketing.css";
+import "./styles/landing.css";
+import "./styles/motion.css";
+import "./styles/polish.css";
 
-const rootElement = document.getElementById("root");
-if (rootElement) {
-  createRoot(rootElement).render(
-    <ErrorBoundary>
-      <LanguageProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </LanguageProvider>
-    </ErrorBoundary>
-  );
-}
-
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

@@ -1,116 +1,95 @@
-import { createHmac } from "node:crypto";
-import { FieldValue } from "firebase-admin/firestore";
-import { getFirebaseAdmin } from "../_firebase.js";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getFirebaseAdmin } from "../../server/lib/firebase.js";
 
+const PERIOD_DAYS = { monthly: 30, annual: 365 };
+
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
+/**
+ * PayTR notification (server-to-server). Must answer exactly "OK" for any
+ * authentic notification, otherwise PayTR retries. It is idempotent: orders
+ * are only ever settled once.
+ */
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    return response.status(405).send("Method not allowed");
-  }
-
-  // PayTR sends application/x-www-form-urlencoded
-  const body = request.body || {};
-  const merchantOid = body.merchant_oid || "";
-  const status = body.status || "";
-  const totalAmount = body.total_amount || "";
-  const hash = body.hash || "";
-  const failedReasonMsg = body.failed_reason_msg || "";
-  const utoken = body.utoken || "";
-  const ctoken = body.ctoken || "";
+  if (request.method !== "POST") return response.status(405).send("Method not allowed");
 
   const merchantKey = process.env.PAYTR_MERCHANT_KEY || "";
   const merchantSalt = process.env.PAYTR_MERCHANT_SALT || "";
+  // Without credentials the signature below would be forgeable with an empty key.
+  if (!merchantKey || !merchantSalt) return response.status(503).send("Payments not configured");
 
-  // 1. Verify HMAC-SHA256 signature
-  // Official PayTR formula: hash_str = merchant_oid + merchant_salt + status + total_amount
-  const hashStr = `${merchantOid}${merchantSalt}${status}${totalAmount}`;
-  const computedHash = createHmac("sha256", merchantKey).update(hashStr).digest("base64");
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const { merchant_oid: oid = "", status = "", total_amount: totalAmount = "", hash = "" } = body;
 
-  if (hash !== computedHash) {
-    console.error("PAYTR callback bad hash rejection:", { merchantOid, hash, computedHash });
+  const expected = createHmac("sha256", merchantKey)
+    .update(`${oid}${merchantSalt}${status}${totalAmount}`)
+    .digest("base64");
+  if (!oid || !safeEqual(hash, expected)) {
+    console.error("PayTR callback rejected: bad hash", { oid });
     return response.status(400).send("PAYTR notification failed: bad hash");
   }
 
   try {
     const { db } = await getFirebaseAdmin();
+    const orderRef = db.collection("orders").doc(String(oid));
 
-    // 2. Extract User ID and Plan from merchantOid (format: loss_{uidPrefix}_{tier}_{timestamp})
-    // Also check pending orders or transactions collection if created
-    const parts = merchantOid.split("_");
-    const planTier = parts[2] || "starter";
+    await db.runTransaction(async (tx) => {
+      const orderSnap = await tx.get(orderRef);
+      if (!orderSnap.exists) {
+        console.error("PayTR callback for unknown order", { oid });
+        return;
+      }
+      const order = orderSnap.data();
+      if (order.status === "paid" || order.status === "failed") return; // already settled
 
-    if (status === "success") {
-      // Find user by scanning or by stored transaction ID
-      // If merchantOid contains user identifier:
-      const userRefQuery = await db
-        .collection("users")
-        .where("subscription.pendingOid", "==", merchantOid)
-        .limit(1)
-        .get();
-
-      let targetUserRef = null;
-
-      if (!userRefQuery.empty) {
-        targetUserRef = userRefQuery.docs[0].ref;
-      } else {
-        // Fallback: search by uid prefix
-        const uidPrefix = parts[1];
-        if (uidPrefix) {
-          const allUsers = await db.collection("users").get();
-          for (const doc of allUsers.docs) {
-            if (doc.id.startsWith(uidPrefix)) {
-              targetUserRef = doc.ref;
-              break;
-            }
-          }
-        }
+      if (status !== "success") {
+        tx.update(orderRef, {
+          status: "failed",
+          failedReason: String(body.failed_reason_msg || "").slice(0, 200),
+          settledAt: FieldValue.serverTimestamp(),
+        });
+        return;
       }
 
-      if (targetUserRef) {
-        await targetUserRef.set(
-          {
-            tier: planTier,
-            subscription: {
-              status: "active",
-              tier: planTier,
-              utoken: utoken || null,
-              ctoken: ctoken || null,
-              lastPaymentAt: FieldValue.serverTimestamp(),
-              lastPaymentAmountKurus: totalAmount,
-              merchantOid,
-              failedAttempts: 0,
-            },
+      if (String(order.amountKurus) !== String(totalAmount)) {
+        console.error("PayTR amount mismatch", { oid, expected: order.amountKurus, got: totalAmount });
+        tx.update(orderRef, { status: "amount_mismatch", settledAt: FieldValue.serverTimestamp() });
+        return;
+      }
+
+      const days = PERIOD_DAYS[order.billingPeriod] || 30;
+      tx.update(orderRef, { status: "paid", settledAt: FieldValue.serverTimestamp() });
+      tx.set(
+        db.collection("users").doc(order.uid),
+        {
+          tier: order.tier,
+          subscription: {
+            status: "active",
+            tier: order.tier,
+            billingPeriod: order.billingPeriod,
+            utoken: body.utoken || order.uid,
+            ctoken: body.ctoken || null,
+            merchantOid: oid,
+            lastPaymentAt: FieldValue.serverTimestamp(),
+            nextBillingAt: Timestamp.fromMillis(Date.now() + days * 86400_000),
+            failedAttempts: 0,
+            cancelAtPeriodEnd: false,
           },
-          { merge: true }
-        );
-      }
+        },
+        { merge: true },
+      );
+    });
 
-      // Record transaction ledger
-      await db.collection("transactions").add({
-        merchantOid,
-        status: "success",
-        totalAmount,
-        tier: planTier,
-        utoken: utoken || null,
-        ctoken: ctoken || null,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-    } else {
-      console.warn("PayTR payment failed:", { merchantOid, failedReasonMsg });
-      await db.collection("transactions").add({
-        merchantOid,
-        status: "failed",
-        failedReasonMsg,
-        totalAmount,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-    }
-
-    // 3. Official PayTR requirement: respond ONLY with the exact literal string "OK"
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
     return response.status(200).send("OK");
-  } catch (err) {
-    console.error("PayTR callback processing error:", err);
-    return response.status(500).send("Database error");
+  } catch (error) {
+    console.error("PayTR callback processing error:", error);
+    return response.status(500).send("Processing error");
   }
 }
 

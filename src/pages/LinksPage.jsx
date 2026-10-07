@@ -1,18 +1,22 @@
-import { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Plus, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { LinksTable } from "../components/links/LinksTable";
 import { LinkFilters } from "../components/links/LinkFilters";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+
+const PAGE_SIZE = 50;
 
 export function LinksPage({
   onOpenCreateModal,
   onOpenQr,
   onDeleteRequest,
   onEditRequest,
+  onViewAnalytics,
 }) {
-  const { links } = useAuth();
-  const { t } = useLanguage();
+  const { links, linksLoading, linksError, refreshLinks } = useAuth();
+  const { t, locale } = useLanguage();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -65,6 +69,15 @@ export function LinksPage({
       });
   }, [links, searchQuery, statusFilter, sortBy]);
 
+  // Reset pagination whenever the result set changes.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, statusFilter, sortBy]);
+
+  const visibleLinks = filteredLinks.slice(0, visibleCount);
+  const remaining = filteredLinks.length - visibleLinks.length;
+  const firstLoad = linksLoading && links.length === 0;
+
   return (
     <div>
       <div className="page-header">
@@ -105,13 +118,45 @@ export function LinksPage({
           />
         </div>
 
-        <LinksTable
-          links={filteredLinks}
-          onOpenQr={onOpenQr}
-          onDeleteRequest={onDeleteRequest}
-          onOpenCreateModal={onOpenCreateModal}
-          onEditRequest={onEditRequest}
-        />
+        {linksError && (
+          <div className="inline-alert" role="alert">
+            <AlertCircle size={16} aria-hidden="true" />
+            <span>{linksError}</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={refreshLinks}>
+              <RefreshCw size={13} /> {locale === "tr" ? "Tekrar dene" : "Retry"}
+            </button>
+          </div>
+        )}
+
+        {firstLoad ? (
+          <div className="inline-loading" role="status">
+            <Loader2 size={18} className="spin" aria-hidden="true" />
+            {locale === "tr" ? "Bağlantılar yükleniyor…" : "Loading links…"}
+          </div>
+        ) : links.length > 0 && filteredLinks.length === 0 ? (
+          <div className="inline-loading">
+            {locale === "tr"
+              ? "Aramanızla eşleşen bağlantı bulunamadı."
+              : "No links match your search."}
+          </div>
+        ) : (
+          <LinksTable
+            links={visibleLinks}
+            onOpenQr={onOpenQr}
+            onDeleteRequest={onDeleteRequest}
+            onOpenCreateModal={onOpenCreateModal}
+            onEditRequest={onEditRequest}
+            onViewAnalytics={onViewAnalytics}
+          />
+        )}
+
+        {remaining > 0 && (
+          <div className="load-more-row">
+            <button type="button" className="btn btn-secondary" onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}>
+              {locale === "tr" ? `Daha fazla göster (${remaining} kaldı)` : `Show more (${remaining} left)`}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

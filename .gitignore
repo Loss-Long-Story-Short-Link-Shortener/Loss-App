@@ -5,3 +5,10 @@ dist
 .env.*.local
 *firebase-adminsdk*.json
 service-account*.json
+dist-preview
+dist-preview-tmp
+*.agents
+*.claude
+*tests
+*CLAUDE.md
+*AGENTS.md

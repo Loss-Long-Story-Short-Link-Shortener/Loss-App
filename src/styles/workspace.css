@@ -1,0 +1,294 @@
+.dashboard-mode .loss-subpage-shell {
+  padding-top: 104px;
+  padding-bottom: 64px;
+  background: var(--bg-app);
+}
+
+.dashboard-mode .loss-subpage-container {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 0;
+}
+
+.dashboard-mode .loss-dash-workspace {
+  gap: 20px;
+}
+
+.dashboard-mode .loss-dash-header {
+  align-items: end;
+  padding: 18px 0 4px;
+}
+
+.dashboard-mode .loss-dash-title {
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.dashboard-mode .loss-dash-title .gradient-text {
+  color: var(--color-primary-light);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.dashboard-mode .loss-dash-subtitle {
+  max-width: 620px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dashboard-mode .loss-dash-stat-pills {
+  justify-content: flex-end;
+}
+
+.dashboard-mode .loss-dash-stat-pill {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border-color: var(--border-subtle);
+}
+
+.dashboard-mode .loss-dash-tabs-bar {
+  position: sticky;
+  top: 82px;
+  z-index: 20;
+  border-radius: var(--radius-sm);
+  background: var(--bg-darker);
+}
+
+.dashboard-mode .loss-dash-panel {
+  gap: 16px;
+}
+
+.dashboard-mode .loss-dash-work-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 16px;
+}
+
+.dashboard-mode .loss-dash-card,
+.dashboard-mode .loss-dash-preview-card {
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-mode .loss-dash-card {
+  padding: 22px;
+}
+
+.dashboard-mode .loss-dash-preview-card {
+  top: 100px;
+}
+
+.dashboard-mode .loss-dash-card-title {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dashboard-mode .loss-dash-card-subtitle,
+.dashboard-mode .loss-dash-label-hint {
+  color: var(--text-muted);
+}
+
+.dashboard-mode .loss-dash-label {
+  color: var(--text-secondary);
+}
+
+.dashboard-mode .loss-dash-input-wrap,
+.dashboard-mode .loss-dash-slug-row {
+  border-radius: var(--radius-xs);
+  background: var(--bg-darker);
+  border-color: var(--border-light);
+}
+
+.dashboard-mode .loss-dash-text-input,
+.dashboard-mode .loss-dash-slug-input-field {
+  color: var(--text-primary);
+}
+
+.dashboard-mode .loss-dash-primary-btn {
+  border-radius: var(--radius-xs);
+  background: var(--color-primary);
+  color: var(--bg-darker);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-mode .loss-dash-primary-btn:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-mode .loss-dash-preview-tag {
+  color: var(--color-primary-light);
+}
+
+.dashboard-mode .loss-dash-qr-canvas-center {
+  border-radius: var(--radius-xs);
+  background: var(--bg-darker);
+}
+
+.dashboard-mode .loss-dash-preview-short-url {
+  color: var(--color-primary-light);
+}
+
+@media (max-width: 960px) {
+  .dashboard-mode .loss-dash-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .dashboard-mode .loss-dash-stat-pills {
+    justify-content: flex-start;
+  }
+  .dashboard-mode .loss-dash-tabs-bar {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-mode .loss-subpage-container {
+    width: min(100% - 24px, 680px);
+  }
+  .dashboard-mode .loss-subpage-shell {
+    padding-top: 92px;
+  }
+  .dashboard-mode .loss-dash-card {
+    padding: 16px;
+  }
+  .dashboard-mode .loss-dash-stat-pills {
+    width: 100%;
+  }
+  .dashboard-mode .loss-dash-stat-pill {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+.dashboard-mode .analytics-page-container {
+  width: 100%;
+  max-width: none;
+  padding: 18px 0 40px;
+}
+
+.dashboard-mode .analytics-page-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.dashboard-mode .analytics-page-desc {
+  color: var(--text-secondary);
+}
+
+.dashboard-mode .analytics-status-tag {
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  border-color: var(--border-light);
+}
+
+.dashboard-mode .live-dot {
+  background: var(--brand-cyan);
+  box-shadow: 0 0 9px rgba(85, 230, 232, 0.7);
+}
+
+.dashboard-mode .analytics-kpi-card,
+.dashboard-mode .analytics-panel-card,
+.dashboard-mode .analytics-highlight-banner {
+  border-color: var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-mode .analytics-kpi-card.highlight {
+  border-color: rgba(44, 147, 255, 0.42);
+  background: linear-gradient(
+    180deg,
+    rgba(49, 86, 245, 0.18),
+    var(--bg-card) 80%
+  );
+}
+
+.dashboard-mode .kpi-icon-wrap.blue,
+.dashboard-mode .kpi-icon-wrap.cyan {
+  background: rgba(44, 147, 255, 0.16);
+  color: var(--brand-cyan);
+}
+
+.dashboard-mode .kpi-icon-wrap.purple {
+  background: rgba(109, 84, 255, 0.16);
+  color: var(--brand-violet);
+}
+
+.dashboard-mode .kpi-icon-wrap.green {
+  background: rgba(85, 230, 232, 0.14);
+  color: var(--brand-cyan);
+}
+
+.dashboard-mode .analytics-real-table th {
+  color: var(--text-muted);
+  background: var(--bg-darker);
+}
+
+@media (max-width: 600px) {
+  .dashboard-mode .analytics-page-container {
+    padding-top: 8px;
+  }
+}
+
+.dashboard-mode .pricing-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dashboard-mode .pricing-card {
+  border-radius: var(--radius-md);
+  border-color: var(--border-light);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboard-mode .pricing-card:hover {
+  border-color: rgba(44, 147, 255, 0.5);
+  transform: translateY(-3px);
+}
+
+.dashboard-mode .pricing-card.featured {
+  border-color: rgba(44, 147, 255, 0.62);
+  background: linear-gradient(
+    180deg,
+    rgba(49, 86, 245, 0.2),
+    var(--bg-card) 45%
+  );
+  box-shadow:
+    var(--shadow-md),
+    0 0 36px rgba(44, 147, 255, 0.12);
+}
+
+.dashboard-mode .pricing-featured-badge {
+  background: var(--gradient-primary);
+  color: var(--bg-darker);
+}
+
+.dashboard-mode .pricing-price-num {
+  color: var(--text-primary);
+}
+
+.dashboard-mode .pricing-feature-item svg {
+  color: var(--brand-cyan) !important;
+}
+
+@media (max-width: 1050px) {
+  .dashboard-mode .pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-mode .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}

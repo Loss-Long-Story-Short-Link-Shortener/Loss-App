@@ -17,7 +17,8 @@ export function LinkFilters({
       <div className="search-input-wrap">
         <Search size={16} color="var(--text-muted)" />
         <input
-          type="text"
+          type="search"
+          aria-label={lt.searchPlaceholder || "Bağlantı ara"}
           placeholder={lt.searchPlaceholder || "Slug, başlık veya hedef URL ara..."}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -27,6 +28,7 @@ export function LinkFilters({
       <div style={{ display: "flex", gap: "8px", marginLeft: "auto", flexWrap: "wrap" }}>
         <select
           className="select-box"
+          aria-label={lt.filterAll || "Durum filtresi"}
           style={{ width: "auto", minWidth: "130px" }}
           value={statusFilter}
           onChange={(e) => onStatusFilterChange(e.target.value)}
@@ -38,6 +40,7 @@ export function LinkFilters({
 
         <select
           className="select-box"
+          aria-label={lt.sortNewest || "Sıralama"}
           style={{ width: "auto", minWidth: "150px" }}
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value)}
